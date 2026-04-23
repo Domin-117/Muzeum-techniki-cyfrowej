@@ -21,16 +21,14 @@
 #include <thread>
 #include <atomic>
 
-// Zmienne do sterowania jasnością
 std::atomic<float> targetBrightness(1.0f);
 float currentBrightness = 1.0f;
 
 VoskModel* g_model;
 VoskRecognizer* g_recognizer;
 
-// Funkcja wywoływana przez mikrofon, gdy ma nową porcję dźwięku
 void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
-    // 1. Sprawdzamy, czy Vosk przetworzył porcję dźwięku (wynik końcowy)
+    // 1. Sprawdzamy, czy Vosk przetworzył porcję dźwięku
     if (vosk_recognizer_accept_waveform(g_recognizer, (const char*)pInput, frameCount * 2)) {
         const char* result = vosk_recognizer_result(g_recognizer);
 
@@ -41,7 +39,7 @@ void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
         printf("Wynik końcowy: %s\n", result);
     }
     else {
-        // 2. Wynik CZĘŚCIOWY (reaguje natychmiast, gdy tylko zaczniesz mówić)
+        // 2. Wynik CZĘŚCIOWY
         const char* partial = vosk_recognizer_partial_result(g_recognizer);
 
         if (strstr(partial, "jasno")) targetBrightness = 1.8f;
