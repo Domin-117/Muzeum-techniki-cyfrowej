@@ -418,7 +418,7 @@ void drawUltimateEniac(glm::vec3 centerPos, ShaderProgram* sp) {
 
     for (int i = 0; i < 4; i++) {
         glm::vec3 pos = glm::vec3(-9.0f, 0.0f, -7.6f + (i * 1.2f));
-        bool isLastInRow = (i == 3);
+        bool isLastInRow = (i == 4);
         drawEniacCabinet(pos, 90.0f, sp, isLastInRow);
     }
 }
