@@ -56,8 +56,7 @@ glm::vec3 cameraPos = glm::vec3(-5.0f, 1.5f, 5.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 float yaw = -90.0f, pitch = 0.0f;
-
-GLuint texWall, texFloor, texCeiling, texLamp, texBricks;
+GLuint texWall, texFloor, texCeiling, texLamp, texBricks, texEniac, texRed, texBlack, texCard, texDesk, texGreen, texGauge;
 GLuint cubeVAO, cubeVBO;
 
 struct AABB {
@@ -80,7 +79,14 @@ std::vector<AABB> walls = {
     createBox(-8.0f,  0.0f, 4.0f, 0.5f),
     createBox(8.0f,  0.0f, 4.0f, 0.5f),
     createBox(0.0f, -8.0f, 0.5f, 4.0f),
-    createBox(0.0f,  8.0f, 0.5f, 4.0f)
+    createBox(0.0f,  8.0f, 0.5f, 4.0f),
+
+    // KOLIZJE DLA ENIACA Pokój 1
+    // Północny rząd maszyn + Narożnik
+    createBox(-5.8f, -8.8f, 7.2f, 1.3f),
+
+    // Zachodni rząd maszyn
+    createBox(-8.8f, -5.8f, 1.3f, 4.8f)
 };
 
 bool checkCollision(glm::vec3 pos) {
@@ -248,8 +254,18 @@ void initOpenGLProgram(GLFWwindow* window) {
     texWall = readTexture("wall.png");
     texFloor = readTexture("floor.png");
     texBricks = readTexture("bricks.png");
+    texEniac = readTexture("eniac_panel.png");
     texCeiling = createSolidColorTexture(255, 255, 255);
     texLamp = createSolidColorTexture(255, 255, 220);
+
+    texRed = createSolidColorTexture(255, 50, 50); // Czerwone lampki
+    texBlack = createSolidColorTexture(30, 30, 30); // Czarne kable
+
+    texCard = createSolidColorTexture(220, 200, 160); // Vintage beżowy 
+    texDesk = createSolidColorTexture(70, 75, 80); // Ciemnoszary, matowy metal
+
+    texGreen = createSolidColorTexture(50, 255, 50); // zielony
+    texGauge = createSolidColorTexture(200, 190, 170); // Wyblakły żółtawy
 }
 
 void freeOpenGLProgram(GLFWwindow* window) {
@@ -268,6 +284,143 @@ void drawObject(glm::mat4 M, GLuint tex, ShaderProgram* sp, int isLamp = 0) {
 
     glBindVertexArray(cubeVAO);
     glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast = false) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    // Unikalny losowy numer 
+    int seed = (int)(abs(pos.x * 111.0f + pos.z * 43.0f));
+
+    // 1. GŁÓWNA SZAFA
+    glm::mat4 mCab = glm::translate(mBase, glm::vec3(0.0f, 1.75f, 0.0f));
+    mCab = glm::scale(mCab, glm::vec3(1.1f, 3.5f, 0.8f));
+    drawObject(mCab, texEniac, sp, 0);
+
+    // 2. DOLNA KRATKA WENTYLACYJNA
+    glm::mat4 mVent = glm::translate(mBase, glm::vec3(0.0f, 0.3f, 0.41f));
+    mVent = glm::scale(mVent, glm::vec3(0.9f, 0.4f, 0.05f));
+    drawObject(mVent, texBlack, sp, 0);
+
+    // 3. STÓŁ / PULPIT 
+    glm::mat4 mDesk = glm::translate(mBase, glm::vec3(0.0f, 0.8f, 0.6f));
+    mDesk = glm::scale(mDesk, glm::vec3(1.1f, 0.1f, 0.5f));
+    drawObject(mDesk, texDesk, sp, 0);
+
+    // Czarna listwa z gniazdami
+    glm::mat4 mSockets = glm::translate(mBase, glm::vec3(0.0f, 0.86f, 0.65f));
+    mSockets = glm::scale(mSockets, glm::vec3(0.9f, 0.02f, 0.2f));
+    drawObject(mSockets, texBlack, sp, 0);
+
+    // Nóżki podtrzymujące pulpit
+    glm::mat4 mLegL = glm::translate(mBase, glm::vec3(-0.45f, 0.4f, 0.75f));
+    mLegL = glm::scale(mLegL, glm::vec3(0.05f, 0.8f, 0.05f));
+    drawObject(mLegL, texDesk, sp, 0);
+    glm::mat4 mLegR = glm::translate(mBase, glm::vec3(0.45f, 0.4f, 0.75f));
+    mLegR = glm::scale(mLegR, glm::vec3(0.05f, 0.8f, 0.05f));
+    drawObject(mLegR, texDesk, sp, 0);
+
+    // 4. ŚRODKOWY PANEL (Wajchy)
+    glm::mat4 mPanelLow = glm::translate(mBase, glm::vec3(0.0f, 1.3f, 0.41f));
+    mPanelLow = glm::scale(mPanelLow, glm::vec3(0.9f, 0.6f, 0.05f));
+    drawObject(mPanelLow, texBlack, sp, 0);
+
+    for (int i = 0; i < 5; i++) {
+        float xOffset = -0.35f + (i * 0.17f);
+        glm::mat4 mSwitch = glm::translate(mBase, glm::vec3(xOffset, 1.3f, 0.44f));
+        mSwitch = glm::scale(mSwitch, glm::vec3(0.03f, 0.15f, 0.06f));
+        drawObject(mSwitch, texCeiling, sp, 0);
+    }
+
+    // 5. GÓRNY PANEL (Macierz lampek)
+    glm::mat4 mPanelUp = glm::translate(mBase, glm::vec3(0.0f, 2.3f, 0.41f));
+    mPanelUp = glm::scale(mPanelUp, glm::vec3(0.9f, 1.0f, 0.05f));
+    drawObject(mPanelUp, texBlack, sp, 0);
+
+    for (int row = 0; row < 5; row++) {
+        for (int col = 0; col < 6; col++) {
+            int randVal = (seed + row * 7 + col * 3) % 10;
+            int isLit = (randVal > 3) ? 1 : 0;
+
+            // 20% szans, że lampka będzie ZIELONA, w przeciwnym razie CZERWONA
+            GLuint currentTex = (randVal > 7) ? texGreen : texRed;
+
+            glm::mat4 mLight = glm::translate(mBase, glm::vec3(-0.35f + (col * 0.14f), 1.95f + (row * 0.18f), 0.44f));
+            mLight = glm::scale(mLight, glm::vec3(0.04f, 0.04f, 0.02f));
+            drawObject(mLight, currentTex, sp, isLit);
+        }
+    }
+
+    // 6. SPLĄTANE KABLE KROSOWE (Do listwy)
+    for (int k = 0; k < 8; k++) {
+        float startX = -0.35f + ((seed + k) % 8) * 0.1f;
+        float endX = -0.35f + ((seed + k * 2) % 8) * 0.1f;
+        float tangleAngle = (startX - endX) * 12.0f;
+
+        glm::mat4 mCable = glm::translate(mBase, glm::vec3((startX + endX) / 2.0f, 1.335f, 0.545f));
+        mCable = glm::rotate(mCable, glm::radians(-13.0f), glm::vec3(1, 0, 0));
+        mCable = glm::rotate(mCable, glm::radians(tangleAngle), glm::vec3(0, 0, 1));
+        mCable = glm::scale(mCable, glm::vec3(0.006f, 0.95f, 0.006f));
+        drawObject(mCable, texBlack, sp, 0);
+    }
+
+    // 7. CZYTNIK KART DZIURKOWANYCH
+    if (seed % 3 == 0) {
+        glm::mat4 mReader = glm::translate(mBase, glm::vec3(0.2f, 0.95f, 0.65f));
+        mReader = glm::scale(mReader, glm::vec3(0.35f, 0.2f, 0.3f));
+        drawObject(mReader, texDesk, sp, 0);
+
+        glm::mat4 mPaper = glm::translate(mBase, glm::vec3(0.2f, 0.98f, 0.85f));
+        mPaper = glm::rotate(mPaper, glm::radians(25.0f), glm::vec3(1, 0, 0));
+        mPaper = glm::scale(mPaper, glm::vec3(0.25f, 0.01f, 0.4f));
+        drawObject(mPaper, texCard, sp, 0);
+    }
+
+    glm::mat4 mTopPanel = glm::translate(mBase, glm::vec3(0.0f, 3.1f, 0.41f));
+    mTopPanel = glm::scale(mTopPanel, glm::vec3(0.85f, 0.4f, 0.05f));
+    drawObject(mTopPanel, texDesk, sp, 0);
+
+    // Zegary analogowe
+    for (int i = 0; i < 2; i++) {
+        glm::mat4 mGauge = glm::translate(mBase, glm::vec3(-0.2f + (i * 0.4f), 3.15f, 0.44f));
+        mGauge = glm::scale(mGauge, glm::vec3(0.18f, 0.18f, 0.02f));
+        drawObject(mGauge, texGauge, sp, 0);
+    }
+
+    // Zielone, podłużne lampki stanu pod zegarami
+    for (int i = 0; i < 4; i++) {
+        glm::mat4 mStatus = glm::translate(mBase, glm::vec3(-0.3f + (i * 0.2f), 2.95f, 0.44f));
+        mStatus = glm::scale(mStatus, glm::vec3(0.12f, 0.04f, 0.02f));
+        drawObject(mStatus, texGreen, sp, 1); // Zawsze świecą
+    }
+
+    // 9. GRUBE KABLE ŁĄCZĄCE SZAFY ZE SOBĄ
+    if (!isLast) {
+        for (int c = 0; c < 3; c++) {
+            glm::mat4 mLink = glm::translate(mBase, glm::vec3(0.6f, 0.5f + (c * 0.1f), 0.35f));
+            mLink = glm::scale(mLink, glm::vec3(1.2f, 0.02f, 0.02f));
+            drawObject(mLink, texBlack, sp, 0);
+        }
+    }
+}
+
+void drawUltimateEniac(glm::vec3 centerPos, ShaderProgram* sp) {
+    glm::mat4 mCorner = glm::translate(glm::mat4(1.0f), glm::vec3(-8.775f, 1.75f, -8.775f));
+    mCorner = glm::scale(mCorner, glm::vec3(1.25f, 3.5f, 1.25f));
+    drawObject(mCorner, texEniac, sp, 0);
+
+    for (int i = 0; i < 5; i++) {
+        glm::vec3 pos = glm::vec3(-7.6f + (i * 1.2f), 0.0f, -9.0f);
+        bool isLastInRow = (i == 4);
+        drawEniacCabinet(pos, 0.0f, sp, isLastInRow);
+    }
+
+    for (int i = 0; i < 4; i++) {
+        glm::vec3 pos = glm::vec3(-9.0f, 0.0f, -7.6f + (i * 1.2f));
+        bool isLastInRow = (i == 3);
+        drawEniacCabinet(pos, 90.0f, sp, isLastInRow);
+    }
 }
 
 void drawScene(GLFWwindow* window) {
@@ -363,6 +516,9 @@ void drawScene(GLFWwindow* window) {
 
     glm::mat4 mDoorZ2 = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 8.0f)), glm::vec3(0.5f, 4.0f, 4.0f));
     drawObject(mDoorZ2, texBricks, spLambert);
+
+    // 4. EKSPONATY
+    drawUltimateEniac(glm::vec3(-5.0f, 0.0f, -6.0f), spLambert);
 
     glfwSwapBuffers(window);
 }
