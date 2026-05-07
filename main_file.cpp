@@ -20,6 +20,8 @@
 #pragma comment(lib, "winmm.lib")
 #include <thread>
 #include <atomic>
+#include "cylinder.h"
+Cylinder cylinderMesh;
 
 std::atomic<float> targetBrightness(1.0f);
 float currentBrightness = 1.0f;
@@ -282,12 +284,23 @@ void initOpenGLProgram(GLFWwindow* window) {
     // KULTOWE KOLORY ODRY 1305 (Elwro)
     texOdraFrame = createSolidColorTexture(230, 225, 210); // Jasny, kremowy beż
     texOdraPanel = createSolidColorTexture(210, 70, 20);   // Ikoniczny pomarańczowy panel
+    cylinderMesh.init(32);
 }
 
 void freeOpenGLProgram(GLFWwindow* window) {
     freeShaders();
     glDeleteVertexArrays(1, &cubeVAO);
     glDeleteBuffers(1, &cubeVBO);
+    cylinderMesh.free();
+}
+
+void drawCylinder(glm::mat4 M, GLuint tex, ShaderProgram* sp, int isLamp = 0) {
+    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+    glUniform1i(sp->u("isLamp"), isLamp);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glUniform1i(sp->u("tex"), 0);
+    cylinderMesh.draw();
 }
 
 void drawObject(glm::mat4 M, GLuint tex, ShaderProgram* sp, int isLamp = 0) {
@@ -442,17 +455,32 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
 
     float time = (float)glfwGetTime();
 
-    // 4. Lewa szpula
+    // 4. Lewa szpula - WALEC zamiast kostki
     glm::mat4 mReel1 = glm::translate(mBase, glm::vec3(-0.22f, 1.9f, 0.39f));
     mReel1 = glm::rotate(mReel1, time * 2.0f, glm::vec3(0, 0, 1));
-    mReel1 = glm::scale(mReel1, glm::vec3(0.25f, 0.25f, 0.02f));
-    drawObject(mReel1, texCeiling, sp, 0);
+    // Obracamy walec żeby oś obrotu była Z (walec domyślnie ma oś Y)
+    mReel1 = glm::rotate(mReel1, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mReel1 = glm::scale(mReel1, glm::vec3(0.28f, 0.04f, 0.28f));
+    drawCylinder(mReel1, texCeiling, sp, 0);
 
-    // 5. Prawa szpula
+    // Ciemny środek szpuli (otwór / piasta)
+    glm::mat4 mHub1 = glm::translate(mBase, glm::vec3(-0.22f, 1.9f, 0.395f));
+    mHub1 = glm::rotate(mHub1, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mHub1 = glm::scale(mHub1, glm::vec3(0.08f, 0.05f, 0.08f));
+    drawCylinder(mHub1, texBlack, sp, 0);
+
+    // 5. Prawa szpula - WALEC zamiast kostki
     glm::mat4 mReel2 = glm::translate(mBase, glm::vec3(0.22f, 1.9f, 0.39f));
     mReel2 = glm::rotate(mReel2, time * 2.0f, glm::vec3(0, 0, 1));
-    mReel2 = glm::scale(mReel2, glm::vec3(0.25f, 0.25f, 0.02f));
-    drawObject(mReel2, texCeiling, sp, 0);
+    mReel2 = glm::rotate(mReel2, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mReel2 = glm::scale(mReel2, glm::vec3(0.28f, 0.04f, 0.28f));
+    drawCylinder(mReel2, texCeiling, sp, 0);
+
+    // Ciemny środek szpuli
+    glm::mat4 mHub2 = glm::translate(mBase, glm::vec3(0.22f, 1.9f, 0.395f));
+    mHub2 = glm::rotate(mHub2, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mHub2 = glm::scale(mHub2, glm::vec3(0.08f, 0.05f, 0.08f));
+    drawCylinder(mHub2, texBlack, sp, 0);
 
     // 6. Pasek taśmy magnetycznej łączący szpule
     glm::mat4 mTape = glm::translate(mBase, glm::vec3(0.0f, 1.75f, 0.39f));
