@@ -91,9 +91,9 @@ std::vector<AABB> walls = {
     createBox(-8.8f, -5.8f, 1.3f, 4.8f),
 
     // --- KOLIZJE DLA ODRY 1305 (Pokój 2) ---
-    createBox(5.0f, -8.0f, 2.8f, 1.8f),   // CPU
-    createBox(8.5f, -6.5f, 1.0f, 4.0f),   // Taśmy
-    createBox(5.0f, -5.0f, 1.8f, 1.2f)    // Biurko
+    createBox(5.0f, -8.0f, 2.8f, 1.8f),
+    createBox(8.5f, -5.3f, 1.2f, 4.0f),
+    createBox(5.0f, -5.0f, 1.8f, 1.2f)
 };
 
 bool checkCollision(glm::vec3 pos) {
