@@ -56,7 +56,9 @@ glm::vec3 cameraPos = glm::vec3(-5.0f, 1.5f, 5.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 float yaw = -90.0f, pitch = 0.0f;
-GLuint texWall, texFloor, texCeiling, texLamp, texBricks, texEniac, texRed, texBlack, texCard, texDesk, texGreen, texGauge;
+
+// Dodałem texOdraFrame oraz texOdraPanel
+GLuint texWall, texFloor, texCeiling, texLamp, texEniacBody, texBricks, texEniac, texRed, texBlack, texCard, texDesk, texGreen, texGauge, texBlue, texYellow, texOdraFrame, texOdraPanel;
 GLuint cubeVAO, cubeVBO;
 
 struct AABB {
@@ -86,7 +88,12 @@ std::vector<AABB> walls = {
     createBox(-5.8f, -8.8f, 7.2f, 1.3f),
 
     // Zachodni rząd maszyn
-    createBox(-8.8f, -5.8f, 1.3f, 4.8f)
+    createBox(-8.8f, -5.8f, 1.3f, 4.8f),
+
+    // --- KOLIZJE DLA ODRY 1305 (Pokój 2) ---
+    createBox(5.0f, -8.0f, 2.8f, 1.8f),   // CPU
+    createBox(8.5f, -6.5f, 1.0f, 4.0f),   // Taśmy
+    createBox(5.0f, -5.0f, 1.8f, 1.2f)    // Biurko
 };
 
 bool checkCollision(glm::vec3 pos) {
@@ -251,8 +258,9 @@ void initOpenGLProgram(GLFWwindow* window) {
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
-    texWall = readTexture("wall.png");
-    texFloor = readTexture("floor.png");
+    texWall = createSolidColorTexture(75, 95, 120);
+    texFloor = createSolidColorTexture(80, 80, 85);
+    texEniacBody = createSolidColorTexture(35, 38, 35);
     texBricks = readTexture("bricks.png");
     texEniac = readTexture("eniac_panel.png");
     texCeiling = createSolidColorTexture(255, 255, 255);
@@ -266,6 +274,14 @@ void initOpenGLProgram(GLFWwindow* window) {
 
     texGreen = createSolidColorTexture(50, 255, 50); // zielony
     texGauge = createSolidColorTexture(200, 190, 170); // Wyblakły żółtawy
+
+    // NOWE KOLORY
+    texBlue = createSolidColorTexture(50, 50, 255);
+    texYellow = createSolidColorTexture(255, 255, 50);
+
+    // KULTOWE KOLORY ODRY 1305 (Elwro)
+    texOdraFrame = createSolidColorTexture(230, 225, 210); // Jasny, kremowy beż
+    texOdraPanel = createSolidColorTexture(210, 70, 20);   // Ikoniczny pomarańczowy panel
 }
 
 void freeOpenGLProgram(GLFWwindow* window) {
@@ -296,7 +312,7 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
     // 1. GŁÓWNA SZAFA
     glm::mat4 mCab = glm::translate(mBase, glm::vec3(0.0f, 1.75f, 0.0f));
     mCab = glm::scale(mCab, glm::vec3(1.1f, 3.5f, 0.8f));
-    drawObject(mCab, texEniac, sp, 0);
+    drawObject(mCab, texEniacBody, sp, 0);
 
     // 2. DOLNA KRATKA WENTYLACYJNA
     glm::mat4 mVent = glm::translate(mBase, glm::vec3(0.0f, 0.3f, 0.41f));
@@ -392,7 +408,7 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
     for (int i = 0; i < 4; i++) {
         glm::mat4 mStatus = glm::translate(mBase, glm::vec3(-0.3f + (i * 0.2f), 2.95f, 0.44f));
         mStatus = glm::scale(mStatus, glm::vec3(0.12f, 0.04f, 0.02f));
-        drawObject(mStatus, texGreen, sp, 1); // Zawsze świecą
+        drawObject(mStatus, texGreen, sp, 1);
     }
 
     // 9. GRUBE KABLE ŁĄCZĄCE SZAFY ZE SOBĄ
@@ -405,10 +421,213 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
     }
 }
 
+void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    // 1. Szafa z taśmami
+    glm::mat4 mCab = glm::translate(mBase, glm::vec3(0.0f, 1.4f, 0.0f));
+    mCab = glm::scale(mCab, glm::vec3(0.9f, 2.8f, 0.7f));
+    drawObject(mCab, texOdraFrame, sp, 0);
+
+    // 2. Dolne drzwiczki pod szpulami
+    glm::mat4 mDoor = glm::translate(mBase, glm::vec3(0.0f, 0.65f, 0.355f));
+    mDoor = glm::scale(mDoor, glm::vec3(0.85f, 1.2f, 0.05f));
+    drawObject(mDoor, texOdraPanel, sp, 0);
+
+    // 3. Ciemny panel z tyłu za szpulami
+    glm::mat4 mPanel = glm::translate(mBase, glm::vec3(0.0f, 1.8f, 0.36f));
+    mPanel = glm::scale(mPanel, glm::vec3(0.8f, 1.0f, 0.05f));
+    drawObject(mPanel, texBlack, sp, 0);
+
+    float time = (float)glfwGetTime();
+
+    // 4. Lewa szpula
+    glm::mat4 mReel1 = glm::translate(mBase, glm::vec3(-0.22f, 1.9f, 0.39f));
+    mReel1 = glm::rotate(mReel1, time * 2.0f, glm::vec3(0, 0, 1));
+    mReel1 = glm::scale(mReel1, glm::vec3(0.25f, 0.25f, 0.02f));
+    drawObject(mReel1, texCeiling, sp, 0);
+
+    // 5. Prawa szpula
+    glm::mat4 mReel2 = glm::translate(mBase, glm::vec3(0.22f, 1.9f, 0.39f));
+    mReel2 = glm::rotate(mReel2, time * 2.0f, glm::vec3(0, 0, 1));
+    mReel2 = glm::scale(mReel2, glm::vec3(0.25f, 0.25f, 0.02f));
+    drawObject(mReel2, texCeiling, sp, 0);
+
+    // 6. Pasek taśmy magnetycznej łączący szpule
+    glm::mat4 mTape = glm::translate(mBase, glm::vec3(0.0f, 1.75f, 0.39f));
+    mTape = glm::scale(mTape, glm::vec3(0.44f, 0.02f, 0.01f));
+    drawObject(mTape, texBlack, sp, 0);
+
+    if (index == 0) {
+        // Mały czarny panel
+        glm::mat4 mSubPanel = glm::translate(mBase, glm::vec3(0.0f, 0.9f, 0.36f));
+        mSubPanel = glm::scale(mSubPanel, glm::vec3(0.5f, 0.15f, 0.05f));
+        drawObject(mSubPanel, texBlack, sp, 0);
+
+        // 5 małych czerwonych diod
+        for (int j = 0; j < 5; j++) {
+            glm::mat4 mLed = glm::translate(mBase, glm::vec3(-0.15f + (j * 0.075f), 0.9f, 0.39f));
+            mLed = glm::scale(mLed, glm::vec3(0.04f, 0.04f, 0.02f));
+            drawObject(mLed, texRed, sp, 1);
+        }
+
+        // Metalowa tabliczka
+        glm::mat4 mPlate = glm::translate(mBase, glm::vec3(0.0f, 0.5f, 0.36f));
+        mPlate = glm::scale(mPlate, glm::vec3(0.4f, 0.2f, 0.05f));
+        drawObject(mPlate, texGauge, sp, 0);
+    }
+    else if (index == 1) {
+        // 4 kolorowe przyciski + 3 wajchy
+        GLuint btnColors[4] = { texRed, texBlue, texGreen, texYellow };
+        for (int r = 0; r < 2; r++) {
+            for (int c = 0; c < 2; c++) {
+                glm::mat4 mBtn = glm::translate(mBase, glm::vec3(-0.15f + (c * 0.08f), 0.95f - (r * 0.08f), 0.36f));
+                mBtn = glm::scale(mBtn, glm::vec3(0.05f, 0.05f, 0.02f));
+                drawObject(mBtn, btnColors[r * 2 + c], sp, 1);
+            }
+        }
+        // Wajchy
+        for (int sw = 0; sw < 3; sw++) {
+            glm::mat4 mSw = glm::translate(mBase, glm::vec3(0.05f + (sw * 0.08f), 0.91f, 0.36f));
+            mSw = glm::rotate(mSw, glm::radians(30.0f), glm::vec3(1, 0, 0));
+            mSw = glm::scale(mSw, glm::vec3(0.02f, 0.08f, 0.02f));
+            drawObject(mSw, texCeiling, sp, 0);
+        }
+    }
+    else if (index == 2) {
+        // Mały czarny panel
+        glm::mat4 mSubPanel = glm::translate(mBase, glm::vec3(0.0f, 0.9f, 0.36f));
+        mSubPanel = glm::scale(mSubPanel, glm::vec3(0.5f, 0.15f, 0.05f));
+        drawObject(mSubPanel, texBlack, sp, 0);
+
+        // Pasek postępu (3 zielone bloki)
+        for (int j = 0; j < 3; j++) {
+            glm::mat4 mBar = glm::translate(mBase, glm::vec3(-0.1f + (j * 0.1f), 0.9f, 0.39f));
+            mBar = glm::scale(mBar, glm::vec3(0.08f, 0.08f, 0.02f));
+            drawObject(mBar, texGreen, sp, 1);
+        }
+
+        // Metalowa tabliczka
+        glm::mat4 mPlate = glm::translate(mBase, glm::vec3(0.0f, 0.5f, 0.36f));
+        mPlate = glm::scale(mPlate, glm::vec3(0.4f, 0.2f, 0.05f));
+        drawObject(mPlate, texGauge, sp, 0);
+    }
+}
+
+void drawMainframeConsole(glm::vec3 pos, float rotY, ShaderProgram* sp) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    // Biurko Operatora
+    glm::mat4 mDesk = glm::translate(mBase, glm::vec3(0.0f, 0.7f, 0.0f));
+    mDesk = glm::scale(mDesk, glm::vec3(1.4f, 0.05f, 0.8f));
+    drawObject(mDesk, texDesk, sp, 0);
+
+    glm::mat4 mLeg1 = glm::translate(mBase, glm::vec3(-0.65f, 0.35f, 0.0f));
+    mLeg1 = glm::scale(mLeg1, glm::vec3(0.05f, 0.7f, 0.7f));
+    drawObject(mLeg1, texBlack, sp, 0);
+
+    glm::mat4 mLeg2 = glm::translate(mBase, glm::vec3(0.65f, 0.35f, 0.0f));
+    mLeg2 = glm::scale(mLeg2, glm::vec3(0.05f, 0.7f, 0.7f));
+    drawObject(mLeg2, texBlack, sp, 0);
+
+    // RETRO TERMINAL
+    glm::mat4 mMonBase = glm::translate(mBase, glm::vec3(0.0f, 0.75f, -0.1f));
+    mMonBase = glm::scale(mMonBase, glm::vec3(0.25f, 0.1f, 0.25f));
+    drawObject(mMonBase, texOdraFrame, sp, 0);
+
+    glm::mat4 mMonitor = glm::translate(mBase, glm::vec3(0.0f, 0.98f, -0.05f));
+    mMonitor = glm::rotate(mMonitor, glm::radians(5.0f), glm::vec3(1, 0, 0));
+    mMonitor = glm::scale(mMonitor, glm::vec3(0.5f, 0.45f, 0.45f));
+    drawObject(mMonitor, texOdraFrame, sp, 0);
+
+    // RETRO TERMINAL: Zielony Ekran
+    glm::mat4 mScreen = glm::translate(mBase, glm::vec3(0.0f, 0.98f, 0.18f));
+    mScreen = glm::rotate(mScreen, glm::radians(5.0f), glm::vec3(1, 0, 0));
+    mScreen = glm::scale(mScreen, glm::vec3(0.42f, 0.35f, 0.02f));
+    drawObject(mScreen, texGreen, sp, 1);
+
+    // Klawiatura
+    glm::mat4 mKeyb = glm::translate(mBase, glm::vec3(0.0f, 0.74f, 0.28f));
+    mKeyb = glm::rotate(mKeyb, glm::radians(10.0f), glm::vec3(1, 0, 0));
+    mKeyb = glm::scale(mKeyb, glm::vec3(0.6f, 0.04f, 0.2f));
+    drawObject(mKeyb, texBlack, sp, 0);
+
+    // Gruby kabel klawiatury
+    glm::mat4 mCable = glm::translate(mBase, glm::vec3(0.0f, 0.73f, 0.12f));
+    mCable = glm::scale(mCable, glm::vec3(0.02f, 0.02f, 0.2f));
+    drawObject(mCable, texBlack, sp, 0);
+}
+
+void drawOdra1305(glm::vec3 centerPos, ShaderProgram* sp) {
+    // Wielka jednostka centralna
+    glm::mat4 mCpuBase = glm::translate(glm::mat4(1.0f), centerPos + glm::vec3(0.0f, 1.0f, -3.0f));
+    glm::mat4 mCpu = glm::scale(mCpuBase, glm::vec3(2.5f, 2.0f, 1.5f));
+    drawObject(mCpu, texOdraFrame, sp, 0);
+
+    // POMARAŃCZOWY FRONT
+    glm::mat4 mCpuFront = glm::translate(mCpuBase, glm::vec3(0.0f, 0.1f, 0.755f));
+    mCpuFront = glm::scale(mCpuFront, glm::vec3(2.4f, 1.6f, 0.02f));
+    drawObject(mCpuFront, texOdraPanel, sp, 0);
+
+    //DETALE NA CPU
+    // Panel sterowania
+    glm::mat4 mCpuPanel = glm::translate(mCpuBase, glm::vec3(-0.5f, 0.3f, 0.76f));
+    mCpuPanel = glm::scale(mCpuPanel, glm::vec3(0.8f, 0.4f, 0.05f));
+    drawObject(mCpuPanel, texBlack, sp, 0);
+
+    // 4 czerwone przyciski (2x2) na panelu
+    for (int r = 0; r < 2; r++) {
+        for (int c = 0; c < 2; c++) {
+            glm::mat4 mBtn = glm::translate(mCpuBase, glm::vec3(-0.7f + (c * 0.12f), 0.36f - (r * 0.12f), 0.79f));
+            mBtn = glm::scale(mBtn, glm::vec3(0.08f, 0.08f, 0.02f));
+            drawObject(mBtn, texRed, sp, 1);
+        }
+    }
+
+    // Czarne pokrętło obok przycisków
+    glm::mat4 mDial = glm::translate(mCpuBase, glm::vec3(-0.35f, 0.3f, 0.79f));
+    mDial = glm::scale(mDial, glm::vec3(0.12f, 0.12f, 0.03f));
+    drawObject(mDial, texDesk, sp, 0);
+
+    // Szczeliny wentylacyjne (prawa strona CPU)
+    for (int v = 0; v < 5; v++) {
+        glm::mat4 mVent = glm::translate(mCpuBase, glm::vec3(0.2f + (v * 0.15f), 0.3f, 0.76f));
+        mVent = glm::scale(mVent, glm::vec3(0.05f, 0.4f, 0.02f));
+        drawObject(mVent, texBlack, sp, 0);
+    }
+
+    // 3 Pamięci taśmowe pod wschodnią ścianą pokoju
+    for (int i = 0; i < 3; i++) {
+        drawTapeDrive(centerPos + glm::vec3(3.5f, 0.0f, -1.5f + (i * 1.2f)), -90.0f, sp, i);
+    }
+
+    // Konsola operatora na środku pokoju
+    drawMainframeConsole(centerPos + glm::vec3(0.0f, 0.0f, 0.0f), 0.0f, sp);
+
+    // Magistrala: Główny procesor (CPU)
+    glm::mat4 mCable1 = glm::translate(glm::mat4(1.0f), centerPos + glm::vec3(0.0f, 0.05f, -1.65f));
+    mCable1 = glm::scale(mCable1, glm::vec3(0.15f, 0.1f, 2.7f));
+    drawObject(mCable1, texBlack, sp, 0);
+
+    glm::mat4 mCable2 = glm::translate(glm::mat4(1.0f), centerPos + glm::vec3(1.75f, 0.05f, -1.5f));
+    mCable2 = glm::scale(mCable2, glm::vec3(3.5f, 0.1f, 0.15f));
+    drawObject(mCable2, texBlack, sp, 0);
+
+    glm::mat4 mCable3 = glm::translate(glm::mat4(1.0f), centerPos + glm::vec3(3.3f, 0.05f, -0.3f));
+    mCable3 = glm::scale(mCable3, glm::vec3(0.15f, 0.1f, 2.6f));
+    drawObject(mCable3, texBlack, sp, 0);
+
+    glm::mat4 mCableUp = glm::translate(glm::mat4(1.0f), centerPos + glm::vec3(0.0f, 0.35f, -0.3f));
+    mCableUp = glm::scale(mCableUp, glm::vec3(0.15f, 0.7f, 0.1f));
+    drawObject(mCableUp, texBlack, sp, 0);
+}
+
 void drawUltimateEniac(glm::vec3 centerPos, ShaderProgram* sp) {
     glm::mat4 mCorner = glm::translate(glm::mat4(1.0f), glm::vec3(-8.775f, 1.75f, -8.775f));
     mCorner = glm::scale(mCorner, glm::vec3(1.25f, 3.5f, 1.25f));
-    drawObject(mCorner, texEniac, sp, 0);
+    drawObject(mCorner, texEniacBody, sp, 0);
 
     for (int i = 0; i < 5; i++) {
         glm::vec3 pos = glm::vec3(-7.6f + (i * 1.2f), 0.0f, -9.0f);
@@ -418,7 +637,7 @@ void drawUltimateEniac(glm::vec3 centerPos, ShaderProgram* sp) {
 
     for (int i = 0; i < 4; i++) {
         glm::vec3 pos = glm::vec3(-9.0f, 0.0f, -7.6f + (i * 1.2f));
-        bool isLastInRow = (i == 4);
+        bool isLastInRow = (i == 3);
         drawEniacCabinet(pos, 90.0f, sp, isLastInRow);
     }
 }
@@ -426,13 +645,27 @@ void drawUltimateEniac(glm::vec3 centerPos, ShaderProgram* sp) {
 void drawScene(GLFWwindow* window) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // 1. Najpierw obliczamy nową jasność
+    glm::vec2 playerPos2D = glm::vec2(cameraPos.x, cameraPos.z);
+    float distEniac = glm::distance(playerPos2D, glm::vec2(-6.0f, -6.0f));
+    float distOdra = glm::distance(playerPos2D, glm::vec2(5.0f, -5.0f));
+
+    if (distEniac < 4.0f) {
+        glfwSetWindowTitle(window, "Eksponat: ENIAC (1945) | Waga: 27 ton | 18 000 lamp prozniowych");
+    }
+    else if (distOdra < 5.0f) {
+        glfwSetWindowTitle(window, "Eksponat: ODRA 1305 (1973) | Elwro Wroclaw | RAM: max 256 KB | Legenda PRL");
+    }
+    else {
+        glfwSetWindowTitle(window, "Muzeum Maszyn Cyfrowych");
+    }
+
+    // Najpierw obliczamy nową jasność
     currentBrightness += (targetBrightness - currentBrightness) * 0.02f;
 
-    // 2. Aktywujemy program (SHADER)
+    // Aktywujemy program (SHADER)
     spLambert->use();
 
-    // 3. DOPIERO TERAZ wysyłamy jasność do aktywnego programu
+    // DOPIERO TERAZ wysyłamy jasność do aktywnego programu
     glUniform1f(spLambert->u("soundVolume"), currentBrightness);
 
     // Aktualizacja rozglądania
@@ -447,7 +680,7 @@ void drawScene(GLFWwindow* window) {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
 
-    // Zabezpieczenie przed dzieleniem przez zero (gdy okno jest zminimalizowane)
+    // Zabezpieczenie przed dzieleniem przez zero
     if (height == 0) height = 1;
     float aspectRatio = (float)width / (float)height;
 
@@ -519,6 +752,7 @@ void drawScene(GLFWwindow* window) {
 
     // 4. EKSPONATY
     drawUltimateEniac(glm::vec3(-5.0f, 0.0f, -6.0f), spLambert);
+    drawOdra1305(glm::vec3(5.0f, 0.0f, -5.0f), spLambert);
 
     glfwSwapBuffers(window);
 }
