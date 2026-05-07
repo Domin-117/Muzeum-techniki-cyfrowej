@@ -455,10 +455,9 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
 
     float time = (float)glfwGetTime();
 
-    // 4. Lewa szpula - WALEC zamiast kostki
+    // 4. Lewa szpula
     glm::mat4 mReel1 = glm::translate(mBase, glm::vec3(-0.22f, 1.9f, 0.39f));
     mReel1 = glm::rotate(mReel1, time * 2.0f, glm::vec3(0, 0, 1));
-    // Obracamy walec żeby oś obrotu była Z (walec domyślnie ma oś Y)
     mReel1 = glm::rotate(mReel1, glm::radians(90.0f), glm::vec3(1, 0, 0));
     mReel1 = glm::scale(mReel1, glm::vec3(0.28f, 0.04f, 0.28f));
     drawCylinder(mReel1, texCeiling, sp, 0);
@@ -469,7 +468,7 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
     mHub1 = glm::scale(mHub1, glm::vec3(0.08f, 0.05f, 0.08f));
     drawCylinder(mHub1, texBlack, sp, 0);
 
-    // 5. Prawa szpula - WALEC zamiast kostki
+    // 5. Prawa szpula
     glm::mat4 mReel2 = glm::translate(mBase, glm::vec3(0.22f, 1.9f, 0.39f));
     mReel2 = glm::rotate(mReel2, time * 2.0f, glm::vec3(0, 0, 1));
     mReel2 = glm::rotate(mReel2, glm::radians(90.0f), glm::vec3(1, 0, 0));
