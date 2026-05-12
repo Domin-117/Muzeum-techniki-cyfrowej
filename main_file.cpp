@@ -820,89 +820,174 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
     float time = (float)glfwGetTime();
 
-    glm::mat4 mBody = glm::translate(mBase, glm::vec3(0.0f, 0.95f, 0.0f));
-    mBody = glm::scale(mBody, glm::vec3(1.5f, 1.9f, 1.5f));
-    drawObject(mBody, texBlack, sp, 0);
+    float cubeSize = 0.75f;
+    float half = cubeSize / 2.0f;
 
-    float sides[4][3] = {
-        { 0.0f,  0.0f,  0.76f},
-        { 0.0f,  0.0f, -0.76f},
-        { 0.76f, 0.0f,  0.0f},
-        {-0.76f, 0.0f,  0.0f},
-    };
-    float sideRotY[4] = { 0.0f, 180.0f, 90.0f, -90.0f };
+    // 8 szescianow w ukladzie 2x2x2
+    for (int ix = 0; ix < 2; ix++) {
+        for (int iy = 0; iy < 2; iy++) {
+            for (int iz = 0; iz < 2; iz++) {
+                float cx = (ix == 0) ? -half : half;
+                float cy = (iy == 0) ? half : half * 3.0f;
+                float cz = (iz == 0) ? -half : half;
 
-    for (int side = 0; side < 4; side++) {
-        glm::mat4 mSideBase = glm::translate(mBase,
-            glm::vec3(sides[side][0], 0.95f, sides[side][2]));
-        mSideBase = glm::rotate(mSideBase,
-            glm::radians(sideRotY[side]), glm::vec3(0, 1, 0));
+                glm::mat4 mSub = glm::translate(mBase, glm::vec3(cx, cy, cz));
 
-        glm::mat4 mGrid = glm::translate(mSideBase, glm::vec3(0.0f, 0.0f, 0.0f));
-        mGrid = glm::scale(mGrid, glm::vec3(1.45f, 1.85f, 0.04f));
-        drawObject(mGrid, texEniacBody, sp, 0);
+                glm::mat4 mBody = glm::scale(mSub, glm::vec3(cubeSize, cubeSize, cubeSize));
+                drawObject(mBody, texBlack, sp, 0);
 
-        for (int row = 0; row < 8; row++) {
-            for (int col = 0; col < 8; col++) {
-                float phase = sin(time * 4.0f + (row + col) * 0.7f +
-                    side * 1.3f);
-                float phase2 = sin(time * 2.5f + row * 1.1f - col * 0.9f);
-                int isLit = (phase > 0.2f && phase2 > -0.3f) ? 1 : 0;
+                float fh = half + 0.005f;
 
-                GLuint ledColor = ((row * 8 + col + side * 7) % 12 == 0)
-                    ? texGreen : texRed;
+                // przednia scianka zewnetrzna
+                if (iz == 1) {
+                    glm::mat4 mFace = glm::translate(mSub, glm::vec3(0.0f, 0.0f, fh));
+                    glm::mat4 mPanel = glm::scale(mFace, glm::vec3(cubeSize - 0.02f, cubeSize - 0.02f, 0.008f));
+                    drawObject(mPanel, texEniacBody, sp, 0);
+                    for (int row = 0; row < 8; row++) {
+                        for (int col = 0; col < 8; col++) {
+                            float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f);
+                            float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
+                            int isLit = (phase * phase2 > 0.05f) ? 1 : 0;
+                            glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
+                            mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
+                            drawObject(mLed, texRed, sp, isLit);
+                        }
+                    }
+                }
 
-                glm::mat4 mLed = glm::translate(mSideBase,
-                    glm::vec3(-0.56f + col * 0.16f,
-                        -0.66f + row * 0.18f,
-                        0.025f));
-                mLed = glm::scale(mLed, glm::vec3(0.06f, 0.06f, 0.015f));
-                drawObject(mLed, ledColor, sp, isLit);
+                // tylna scianka zewnetrzna
+                if (iz == 0) {
+                    glm::mat4 mFace = glm::translate(mSub, glm::vec3(0.0f, 0.0f, -fh));
+                    mFace = glm::rotate(mFace, glm::radians(180.0f), glm::vec3(0, 1, 0));
+                    glm::mat4 mPanel = glm::scale(mFace, glm::vec3(cubeSize - 0.02f, cubeSize - 0.02f, 0.008f));
+                    drawObject(mPanel, texEniacBody, sp, 0);
+                    for (int row = 0; row < 8; row++) {
+                        for (int col = 0; col < 8; col++) {
+                            float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f + 2.0f);
+                            float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
+                            int isLit = (phase * phase2 > 0.05f) ? 1 : 0;
+                            glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
+                            mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
+                            drawObject(mLed, texRed, sp, isLit);
+                        }
+                    }
+                }
+
+                // prawa scianka zewnetrzna
+                if (ix == 1) {
+                    glm::mat4 mFace = glm::translate(mSub, glm::vec3(fh, 0.0f, 0.0f));
+                    mFace = glm::rotate(mFace, glm::radians(90.0f), glm::vec3(0, 1, 0));
+                    glm::mat4 mPanel = glm::scale(mFace, glm::vec3(cubeSize - 0.02f, cubeSize - 0.02f, 0.008f));
+                    drawObject(mPanel, texEniacBody, sp, 0);
+                    for (int row = 0; row < 8; row++) {
+                        for (int col = 0; col < 8; col++) {
+                            float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f + 4.0f);
+                            float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
+                            int isLit = (phase * phase2 > 0.05f) ? 1 : 0;
+                            glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
+                            mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
+                            drawObject(mLed, texRed, sp, isLit);
+                        }
+                    }
+                }
+
+                // lewa scianka zewnetrzna
+                if (ix == 0) {
+                    glm::mat4 mFace = glm::translate(mSub, glm::vec3(-fh, 0.0f, 0.0f));
+                    mFace = glm::rotate(mFace, glm::radians(-90.0f), glm::vec3(0, 1, 0));
+                    glm::mat4 mPanel = glm::scale(mFace, glm::vec3(cubeSize - 0.02f, cubeSize - 0.02f, 0.008f));
+                    drawObject(mPanel, texEniacBody, sp, 0);
+                    for (int row = 0; row < 8; row++) {
+                        for (int col = 0; col < 8; col++) {
+                            float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f + 6.0f);
+                            float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
+                            int isLit = (phase * phase2 > 0.05f) ? 1 : 0;
+                            glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
+                            mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
+                            drawObject(mLed, texRed, sp, isLit);
+                        }
+                    }
+                }
+
+                // gorna scianka
+                if (iy == 1) {
+                    glm::mat4 mFace = glm::translate(mSub, glm::vec3(0.0f, fh, 0.0f));
+                    mFace = glm::rotate(mFace, glm::radians(-90.0f), glm::vec3(1, 0, 0));
+                    glm::mat4 mPanel = glm::scale(mFace, glm::vec3(cubeSize - 0.02f, cubeSize - 0.02f, 0.008f));
+                    drawObject(mPanel, texEniacBody, sp, 0);
+                    for (int g = 0; g < 5; g++) {
+                        glm::mat4 mSlot = glm::translate(mFace, glm::vec3(-0.28f + g * 0.14f, 0.0f, 0.012f));
+                        mSlot = glm::scale(mSlot, glm::vec3(0.04f, 0.6f, 0.004f));
+                        drawObject(mSlot, texBlack, sp, 0);
+                    }
+                }
             }
         }
     }
 
-    glm::mat4 mTop = glm::translate(mBase, glm::vec3(0.0f, 1.91f, 0.0f));
-    mTop = glm::scale(mTop, glm::vec3(1.52f, 0.04f, 1.52f));
-    drawObject(mTop, texDesk, sp, 0);
+    // wcięcia
+    float grooveDepth = 0.03f;
+    float grooveW = 0.05f;
+    float grooveThin = 0.004f;
 
-    float corners[4][2] = { {-0.6f,-0.6f},{0.6f,-0.6f},{0.6f,0.6f},{-0.6f,0.6f} };
-    for (int c = 0; c < 4; c++) {
-        glm::mat4 mBolt = glm::translate(mBase,
-            glm::vec3(corners[c][0], 1.94f, corners[c][1]));
-        mBolt = glm::scale(mBolt, glm::vec3(0.05f, 0.02f, 0.05f));
-        drawObject(mBolt, texGauge, sp, 0);
-    }
+    // przednia sciana
+    glm::mat4 mGV = glm::translate(mBase, glm::vec3(0.0f, cubeSize, cubeSize - grooveDepth));
+    mGV = glm::scale(mGV, glm::vec3(grooveW, cubeSize * 2.0f, grooveThin));
+    drawObject(mGV, texEniacBody, sp, 0);
+    glm::mat4 mGH = glm::translate(mBase, glm::vec3(0.0f, cubeSize, cubeSize - grooveDepth));
+    mGH = glm::scale(mGH, glm::vec3(cubeSize * 2.0f, grooveW, grooveThin));
+    drawObject(mGH, texEniacBody, sp, 0);
 
-    glm::mat4 mBase2 = glm::translate(mBase, glm::vec3(0.0f, 0.05f, 0.0f));
-    mBase2 = glm::scale(mBase2, glm::vec3(1.65f, 0.1f, 1.65f));
-    drawObject(mBase2, texDesk, sp, 0);
+    // tylna sciana
+    glm::mat4 mGV2 = glm::translate(mBase, glm::vec3(0.0f, cubeSize, -(cubeSize - grooveDepth)));
+    mGV2 = glm::scale(mGV2, glm::vec3(grooveW, cubeSize * 2.0f, grooveThin));
+    drawObject(mGV2, texEniacBody, sp, 0);
+    glm::mat4 mGH2 = glm::translate(mBase, glm::vec3(0.0f, cubeSize, -(cubeSize - grooveDepth)));
+    mGH2 = glm::scale(mGH2, glm::vec3(cubeSize * 2.0f, grooveW, grooveThin));
+    drawObject(mGH2, texEniacBody, sp, 0);
 
-    for (int c = 0; c < 4; c++) {
-        glm::mat4 mWheel = glm::translate(mBase,
-            glm::vec3(corners[c][0] * 0.85f, 0.04f, corners[c][1] * 0.85f));
-        mWheel = glm::rotate(mWheel, glm::radians(90.0f), glm::vec3(1, 0, 0));
-        mWheel = glm::scale(mWheel, glm::vec3(0.06f, 0.04f, 0.06f));
-        drawCylinder(mWheel, texBlack, sp, 0);
-    }
+    // prawa sciana
+    glm::mat4 mGV3 = glm::translate(mBase, glm::vec3(cubeSize - grooveDepth, cubeSize, 0.0f));
+    mGV3 = glm::scale(mGV3, glm::vec3(grooveThin, cubeSize * 2.0f, grooveW));
+    drawObject(mGV3, texEniacBody, sp, 0);
+    glm::mat4 mGH3 = glm::translate(mBase, glm::vec3(cubeSize - grooveDepth, cubeSize, 0.0f));
+    mGH3 = glm::scale(mGH3, glm::vec3(grooveThin, grooveW, cubeSize * 2.0f));
+    drawObject(mGH3, texEniacBody, sp, 0);
 
-    glm::mat4 mConsole = glm::translate(mBase,
-        glm::vec3(0.0f, 0.78f, 0.92f));
-    mConsole = glm::scale(mConsole, glm::vec3(0.5f, 0.3f, 0.04f));
-    drawObject(mConsole, texEniacBody, sp, 0);
+    // lewa sciana
+    glm::mat4 mGV4 = glm::translate(mBase, glm::vec3(-(cubeSize - grooveDepth), cubeSize, 0.0f));
+    mGV4 = glm::scale(mGV4, glm::vec3(grooveThin, cubeSize * 2.0f, grooveW));
+    drawObject(mGV4, texEniacBody, sp, 0);
+    glm::mat4 mGH4 = glm::translate(mBase, glm::vec3(-(cubeSize - grooveDepth), cubeSize, 0.0f));
+    mGH4 = glm::scale(mGH4, glm::vec3(grooveThin, grooveW, cubeSize * 2.0f));
+    drawObject(mGH4, texEniacBody, sp, 0);
 
-    GLuint btnC[3] = { texRed, texGreen, texYellow };
-    for (int b = 0; b < 3; b++) {
-        glm::mat4 mBtn = glm::translate(mBase,
-            glm::vec3(-0.1f + b * 0.1f, 0.80f, 0.945f));
-        mBtn = glm::scale(mBtn, glm::vec3(0.05f, 0.05f, 0.02f));
-        drawObject(mBtn, btnC[b], sp, 1);
-    }
+    // podstawa z kolkami
+    float baseW = cubeSize * 2.0f + 0.1f;
+    glm::mat4 mRim = glm::translate(mBase, glm::vec3(0.0f, 0.04f, 0.0f));
+    mRim = glm::scale(mRim, glm::vec3(baseW, 0.08f, baseW));
+    drawObject(mRim, texDesk, sp, 0);
 
-    glm::mat4 mCable = glm::translate(mBase,
-        glm::vec3(0.3f, 0.5f, -0.77f));
-    mCable = glm::scale(mCable, glm::vec3(0.04f, 1.0f, 0.04f));
-    drawObject(mCable, texBlack, sp, 0);
+    float hw = baseW / 2.0f - 0.08f;
+    glm::mat4 mW1 = glm::translate(mBase, glm::vec3(-hw, 0.04f, -hw));
+    mW1 = glm::rotate(mW1, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mW1 = glm::scale(mW1, glm::vec3(0.07f, 0.05f, 0.07f));
+    drawCylinder(mW1, texBlack, sp, 0);
+
+    glm::mat4 mW2 = glm::translate(mBase, glm::vec3(hw, 0.04f, -hw));
+    mW2 = glm::rotate(mW2, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mW2 = glm::scale(mW2, glm::vec3(0.07f, 0.05f, 0.07f));
+    drawCylinder(mW2, texBlack, sp, 0);
+
+    glm::mat4 mW3 = glm::translate(mBase, glm::vec3(hw, 0.04f, hw));
+    mW3 = glm::rotate(mW3, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mW3 = glm::scale(mW3, glm::vec3(0.07f, 0.05f, 0.07f));
+    drawCylinder(mW3, texBlack, sp, 0);
+
+    glm::mat4 mW4 = glm::translate(mBase, glm::vec3(-hw, 0.04f, hw));
+    mW4 = glm::rotate(mW4, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mW4 = glm::scale(mW4, glm::vec3(0.07f, 0.05f, 0.07f));
+    drawCylinder(mW4, texBlack, sp, 0);
 }
 
 void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
