@@ -21,6 +21,7 @@
 #include <thread>
 #include <atomic>
 #include "cylinder.h"
+
 Cylinder cylinderMesh;
 
 std::atomic<float> targetBrightness(1.0f);
@@ -30,7 +31,6 @@ VoskModel* g_model;
 VoskRecognizer* g_recognizer;
 
 void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
-    // 1. Sprawdzamy, czy Vosk przetworzył porcję dźwięku
     if (vosk_recognizer_accept_waveform(g_recognizer, (const char*)pInput, frameCount * 2)) {
         const char* result = vosk_recognizer_result(g_recognizer);
 
@@ -41,7 +41,6 @@ void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
         printf("Wynik końcowy: %s\n", result);
     }
     else {
-        // 2. Wynik CZĘŚCIOWY
         const char* partial = vosk_recognizer_partial_result(g_recognizer);
 
         if (strstr(partial, "jasno")) targetBrightness = 1.8f;
@@ -54,13 +53,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-glm::vec3 cameraPos = glm::vec3(-5.0f, 1.5f, 5.0f);
+glm::vec3 cameraPos = glm::vec3(-3.0f, 1.5f, -3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 float yaw = -90.0f, pitch = 0.0f;
 
-// Dodałem texOdraFrame oraz texOdraPanel
 GLuint texWall, texFloor, texCeiling, texLamp, texEniacBody, texBricks, texEniac, texRed, texBlack, texCard, texDesk, texGreen, texGauge, texBlue, texYellow, texOdraFrame, texOdraPanel;
+GLuint texWood, texC64Beige, texAtariBeige, texDarkKeys, texC64Screen, texAtariScreen;
 GLuint cubeVAO, cubeVBO;
 
 struct AABB {
@@ -72,10 +71,10 @@ AABB createBox(float cx, float cz, float width, float depth) {
 }
 
 std::vector<AABB> walls = {
-    createBox(0.0f, -10.0f, 20.0f, 0.5f), // Północ
-    createBox(0.0f,  10.0f, 20.0f, 0.5f), // Południe
-    createBox(-10.0f,  0.0f,  0.5f, 20.0f), // Zachód
-    createBox(10.0f,  0.0f,  0.5f, 20.0f), // Wschód
+    createBox(0.0f, -10.0f, 20.0f, 0.5f),
+    createBox(0.0f,  10.0f, 20.0f, 0.5f),
+    createBox(-10.0f,  0.0f,  0.5f, 20.0f),
+    createBox(10.0f,  0.0f,  0.5f, 20.0f),
 
     createBox(0.0f, 0.0f, 8.0f, 0.5f),
     createBox(0.0f, 0.0f, 0.5f, 8.0f),
@@ -85,17 +84,17 @@ std::vector<AABB> walls = {
     createBox(0.0f, -8.0f, 0.5f, 4.0f),
     createBox(0.0f,  8.0f, 0.5f, 4.0f),
 
-    // KOLIZJE DLA ENIACA Pokój 1
-    // Północny rząd maszyn + Narożnik
     createBox(-5.8f, -8.8f, 7.2f, 1.3f),
-
-    // Zachodni rząd maszyn
     createBox(-8.8f, -5.8f, 1.3f, 4.8f),
 
-    // --- KOLIZJE DLA ODRY 1305 (Pokój 2) ---
     createBox(5.0f, -8.0f, 2.8f, 1.8f),
     createBox(8.5f, -5.3f, 1.2f, 4.0f),
-    createBox(5.0f, -5.0f, 1.8f, 1.2f)
+    createBox(5.0f, -5.0f, 1.8f, 1.2f),
+
+    createBox(5.0f, 5.0f, 2.6f, 1.4f),
+
+    createBox(-8.0f, 4.0f, 1.8f, 1.8f),
+    createBox(-4.5f, 6.5f, 2.6f, 2.6f),
 };
 
 bool checkCollision(glm::vec3 pos) {
@@ -113,42 +112,36 @@ bool checkCollision(glm::vec3 pos) {
 }
 
 float cubeVertices[] = {
-    // Tył
     -0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,   0.0f, 0.0f,
      0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,   1.0f, 0.0f,
      0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f,   1.0f, 1.0f,
      0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f,   1.0f, 1.0f,
     -0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f,   0.0f, 1.0f,
     -0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,   0.0f, 0.0f,
-    // Przód
     -0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f,   0.0f, 0.0f,
      0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f,   1.0f, 0.0f,
      0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f,   1.0f, 1.0f,
      0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f,   1.0f, 1.0f,
     -0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f,   0.0f, 1.0f,
     -0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f,   0.0f, 0.0f,
-    // Lewo
     -0.5f,  0.5f,  0.5f,  -1.0f,  0.0f,  0.0f,   1.0f, 0.0f,
     -0.5f,  0.5f, -0.5f,  -1.0f,  0.0f,  0.0f,   1.0f, 1.0f,
     -0.5f, -0.5f, -0.5f,  -1.0f,  0.0f,  0.0f,   0.0f, 1.0f,
     -0.5f, -0.5f, -0.5f,  -1.0f,  0.0f,  0.0f,   0.0f, 1.0f,
     -0.5f, -0.5f,  0.5f,  -1.0f,  0.0f,  0.0f,   0.0f, 0.0f,
     -0.5f,  0.5f,  0.5f,  -1.0f,  0.0f,  0.0f,   1.0f, 0.0f,
-    // Prawo
      0.5f,  0.5f,  0.5f,   1.0f,  0.0f,  0.0f,   1.0f, 0.0f,
      0.5f,  0.5f, -0.5f,   1.0f,  0.0f,  0.0f,   1.0f, 1.0f,
      0.5f, -0.5f, -0.5f,   1.0f,  0.0f,  0.0f,   0.0f, 1.0f,
      0.5f, -0.5f, -0.5f,   1.0f,  0.0f,  0.0f,   0.0f, 1.0f,
      0.5f, -0.5f,  0.5f,   1.0f,  0.0f,  0.0f,   0.0f, 0.0f,
      0.5f,  0.5f,  0.5f,   1.0f,  0.0f,  0.0f,   1.0f, 0.0f,
-     // Dół
      -0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f,   0.0f, 1.0f,
       0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f,   1.0f, 1.0f,
       0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f,   1.0f, 0.0f,
       0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f,   1.0f, 0.0f,
      -0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f,   0.0f, 0.0f,
      -0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f,   0.0f, 1.0f,
-     // Góra
      -0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f,   0.0f, 1.0f,
       0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f,   1.0f, 1.0f,
       0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f,   1.0f, 0.0f,
@@ -170,7 +163,6 @@ GLuint readTexture(const char* filename) {
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     return tex;
@@ -210,26 +202,20 @@ void processInput(GLFWwindow* window) {
 
     glm::vec3 movement = targetDirection * speed;
 
-    // KOLIZJA
-    // 1. Sprawdzamy ruch na osi X
     glm::vec3 testPosX = glm::vec3(cameraPos.x + movement.x, cameraPos.y, cameraPos.z);
     if (!checkCollision(testPosX)) {
         cameraPos.x += movement.x;
     }
 
-    // 2. Sprawdzamy ruch na osi Z
     glm::vec3 testPosZ = glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z + movement.z);
     if (!checkCollision(testPosZ)) {
         cameraPos.z += movement.z;
     }
 
-    // Zablokowanie wysokości
     cameraPos.y = 1.5f;
 
-    // Obracanie kamery nie podlega kolizjom
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)  yaw -= rotSpeed;
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) yaw += rotSpeed;
-    // Spoglądanie w górę i w dół
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)    pitch += rotSpeed;
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)  pitch -= rotSpeed;
 
@@ -250,13 +236,10 @@ void initOpenGLProgram(GLFWwindow* window) {
     glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
 
-    // Pozycja
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    // Normalna
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    // Tekstura UV
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
@@ -267,24 +250,23 @@ void initOpenGLProgram(GLFWwindow* window) {
     texEniac = readTexture("eniac_panel.png");
     texCeiling = createSolidColorTexture(255, 255, 255);
     texLamp = createSolidColorTexture(255, 255, 220);
-
-    texRed = createSolidColorTexture(255, 50, 50); // Czerwone lampki
-    texBlack = createSolidColorTexture(30, 30, 30); // Czarne kable
-
-    texCard = createSolidColorTexture(220, 200, 160); // Vintage beżowy 
-    texDesk = createSolidColorTexture(70, 75, 80); // Ciemnoszary, matowy metal
-
-    texGreen = createSolidColorTexture(50, 255, 50); // zielony
-    texGauge = createSolidColorTexture(200, 190, 170); // Wyblakły żółtawy
-
-    // NOWE KOLORY
+    texRed = createSolidColorTexture(255, 50, 50);
+    texBlack = createSolidColorTexture(30, 30, 30);
+    texCard = createSolidColorTexture(220, 200, 160);
+    texDesk = createSolidColorTexture(70, 75, 80);
+    texGreen = createSolidColorTexture(50, 255, 50);
+    texGauge = createSolidColorTexture(200, 190, 170);
     texBlue = createSolidColorTexture(50, 50, 255);
     texYellow = createSolidColorTexture(255, 255, 50);
-
-    // KULTOWE KOLORY ODRY 1305 (Elwro)
-    texOdraFrame = createSolidColorTexture(230, 225, 210); // Jasny, kremowy beż
-    texOdraPanel = createSolidColorTexture(210, 70, 20);   // Ikoniczny pomarańczowy panel
+    texOdraFrame = createSolidColorTexture(230, 225, 210);
+    texOdraPanel = createSolidColorTexture(210, 70, 20);
     cylinderMesh.init(32);
+    texWood = createSolidColorTexture(110, 70, 40);
+    texC64Beige = createSolidColorTexture(180, 175, 155);
+    texAtariBeige = createSolidColorTexture(200, 195, 185);
+    texDarkKeys = createSolidColorTexture(60, 50, 45);
+    texC64Screen = createSolidColorTexture(120, 120, 230);
+    texAtariScreen = createSolidColorTexture(30, 60, 180);
 }
 
 void freeOpenGLProgram(GLFWwindow* window) {
@@ -319,30 +301,24 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
     mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
 
-    // Unikalny losowy numer 
     int seed = (int)(abs(pos.x * 111.0f + pos.z * 43.0f));
 
-    // 1. GŁÓWNA SZAFA
     glm::mat4 mCab = glm::translate(mBase, glm::vec3(0.0f, 1.75f, 0.0f));
     mCab = glm::scale(mCab, glm::vec3(1.1f, 3.5f, 0.8f));
     drawObject(mCab, texEniacBody, sp, 0);
 
-    // 2. DOLNA KRATKA WENTYLACYJNA
     glm::mat4 mVent = glm::translate(mBase, glm::vec3(0.0f, 0.3f, 0.41f));
     mVent = glm::scale(mVent, glm::vec3(0.9f, 0.4f, 0.05f));
     drawObject(mVent, texBlack, sp, 0);
 
-    // 3. STÓŁ / PULPIT 
     glm::mat4 mDesk = glm::translate(mBase, glm::vec3(0.0f, 0.8f, 0.6f));
     mDesk = glm::scale(mDesk, glm::vec3(1.1f, 0.1f, 0.5f));
     drawObject(mDesk, texDesk, sp, 0);
 
-    // Czarna listwa z gniazdami
     glm::mat4 mSockets = glm::translate(mBase, glm::vec3(0.0f, 0.86f, 0.65f));
     mSockets = glm::scale(mSockets, glm::vec3(0.9f, 0.02f, 0.2f));
     drawObject(mSockets, texBlack, sp, 0);
 
-    // Nóżki podtrzymujące pulpit
     glm::mat4 mLegL = glm::translate(mBase, glm::vec3(-0.45f, 0.4f, 0.75f));
     mLegL = glm::scale(mLegL, glm::vec3(0.05f, 0.8f, 0.05f));
     drawObject(mLegL, texDesk, sp, 0);
@@ -350,7 +326,6 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
     mLegR = glm::scale(mLegR, glm::vec3(0.05f, 0.8f, 0.05f));
     drawObject(mLegR, texDesk, sp, 0);
 
-    // 4. ŚRODKOWY PANEL (Wajchy)
     glm::mat4 mPanelLow = glm::translate(mBase, glm::vec3(0.0f, 1.3f, 0.41f));
     mPanelLow = glm::scale(mPanelLow, glm::vec3(0.9f, 0.6f, 0.05f));
     drawObject(mPanelLow, texBlack, sp, 0);
@@ -362,7 +337,6 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
         drawObject(mSwitch, texCeiling, sp, 0);
     }
 
-    // 5. GÓRNY PANEL (Macierz lampek)
     glm::mat4 mPanelUp = glm::translate(mBase, glm::vec3(0.0f, 2.3f, 0.41f));
     mPanelUp = glm::scale(mPanelUp, glm::vec3(0.9f, 1.0f, 0.05f));
     drawObject(mPanelUp, texBlack, sp, 0);
@@ -371,8 +345,6 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
         for (int col = 0; col < 6; col++) {
             int randVal = (seed + row * 7 + col * 3) % 10;
             int isLit = (randVal > 3) ? 1 : 0;
-
-            // 20% szans, że lampka będzie ZIELONA, w przeciwnym razie CZERWONA
             GLuint currentTex = (randVal > 7) ? texGreen : texRed;
 
             glm::mat4 mLight = glm::translate(mBase, glm::vec3(-0.35f + (col * 0.14f), 1.95f + (row * 0.18f), 0.44f));
@@ -381,7 +353,6 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
         }
     }
 
-    // 6. SPLĄTANE KABLE KROSOWE (Do listwy)
     for (int k = 0; k < 8; k++) {
         float startX = -0.35f + ((seed + k) % 8) * 0.1f;
         float endX = -0.35f + ((seed + k * 2) % 8) * 0.1f;
@@ -394,7 +365,6 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
         drawObject(mCable, texBlack, sp, 0);
     }
 
-    // 7. CZYTNIK KART DZIURKOWANYCH
     if (seed % 3 == 0) {
         glm::mat4 mReader = glm::translate(mBase, glm::vec3(0.2f, 0.95f, 0.65f));
         mReader = glm::scale(mReader, glm::vec3(0.35f, 0.2f, 0.3f));
@@ -410,21 +380,18 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
     mTopPanel = glm::scale(mTopPanel, glm::vec3(0.85f, 0.4f, 0.05f));
     drawObject(mTopPanel, texDesk, sp, 0);
 
-    // Zegary analogowe
     for (int i = 0; i < 2; i++) {
         glm::mat4 mGauge = glm::translate(mBase, glm::vec3(-0.2f + (i * 0.4f), 3.15f, 0.44f));
         mGauge = glm::scale(mGauge, glm::vec3(0.18f, 0.18f, 0.02f));
         drawObject(mGauge, texGauge, sp, 0);
     }
 
-    // Zielone, podłużne lampki stanu pod zegarami
     for (int i = 0; i < 4; i++) {
         glm::mat4 mStatus = glm::translate(mBase, glm::vec3(-0.3f + (i * 0.2f), 2.95f, 0.44f));
         mStatus = glm::scale(mStatus, glm::vec3(0.12f, 0.04f, 0.02f));
         drawObject(mStatus, texGreen, sp, 1);
     }
 
-    // 9. GRUBE KABLE ŁĄCZĄCE SZAFY ZE SOBĄ
     if (!isLast) {
         for (int c = 0; c < 3; c++) {
             glm::mat4 mLink = glm::translate(mBase, glm::vec3(0.6f, 0.5f + (c * 0.1f), 0.35f));
@@ -438,74 +405,62 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
     mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
 
-    // 1. Szafa z taśmami
     glm::mat4 mCab = glm::translate(mBase, glm::vec3(0.0f, 1.4f, 0.0f));
     mCab = glm::scale(mCab, glm::vec3(0.9f, 2.8f, 0.7f));
     drawObject(mCab, texOdraFrame, sp, 0);
 
-    // 2. Dolne drzwiczki pod szpulami
     glm::mat4 mDoor = glm::translate(mBase, glm::vec3(0.0f, 0.65f, 0.355f));
     mDoor = glm::scale(mDoor, glm::vec3(0.85f, 1.2f, 0.05f));
     drawObject(mDoor, texOdraPanel, sp, 0);
 
-    // 3. Ciemny panel z tyłu za szpulami
     glm::mat4 mPanel = glm::translate(mBase, glm::vec3(0.0f, 1.8f, 0.36f));
     mPanel = glm::scale(mPanel, glm::vec3(0.8f, 1.0f, 0.05f));
     drawObject(mPanel, texBlack, sp, 0);
 
     float time = (float)glfwGetTime();
 
-    // 4. Lewa szpula
     glm::mat4 mReel1 = glm::translate(mBase, glm::vec3(-0.22f, 1.9f, 0.39f));
     mReel1 = glm::rotate(mReel1, time * 2.0f, glm::vec3(0, 0, 1));
     mReel1 = glm::rotate(mReel1, glm::radians(90.0f), glm::vec3(1, 0, 0));
     mReel1 = glm::scale(mReel1, glm::vec3(0.28f, 0.04f, 0.28f));
     drawCylinder(mReel1, texCeiling, sp, 0);
 
-    // Ciemny środek szpuli (otwór / piasta)
     glm::mat4 mHub1 = glm::translate(mBase, glm::vec3(-0.22f, 1.9f, 0.395f));
     mHub1 = glm::rotate(mHub1, glm::radians(90.0f), glm::vec3(1, 0, 0));
     mHub1 = glm::scale(mHub1, glm::vec3(0.08f, 0.05f, 0.08f));
     drawCylinder(mHub1, texBlack, sp, 0);
 
-    // 5. Prawa szpula
     glm::mat4 mReel2 = glm::translate(mBase, glm::vec3(0.22f, 1.9f, 0.39f));
     mReel2 = glm::rotate(mReel2, time * 2.0f, glm::vec3(0, 0, 1));
     mReel2 = glm::rotate(mReel2, glm::radians(90.0f), glm::vec3(1, 0, 0));
     mReel2 = glm::scale(mReel2, glm::vec3(0.28f, 0.04f, 0.28f));
     drawCylinder(mReel2, texCeiling, sp, 0);
 
-    // Ciemny środek szpuli
     glm::mat4 mHub2 = glm::translate(mBase, glm::vec3(0.22f, 1.9f, 0.395f));
     mHub2 = glm::rotate(mHub2, glm::radians(90.0f), glm::vec3(1, 0, 0));
     mHub2 = glm::scale(mHub2, glm::vec3(0.08f, 0.05f, 0.08f));
     drawCylinder(mHub2, texBlack, sp, 0);
 
-    // 6. Pasek taśmy magnetycznej łączący szpule
     glm::mat4 mTape = glm::translate(mBase, glm::vec3(0.0f, 1.75f, 0.39f));
     mTape = glm::scale(mTape, glm::vec3(0.44f, 0.02f, 0.01f));
     drawObject(mTape, texBlack, sp, 0);
 
     if (index == 0) {
-        // Mały czarny panel
         glm::mat4 mSubPanel = glm::translate(mBase, glm::vec3(0.0f, 0.9f, 0.36f));
         mSubPanel = glm::scale(mSubPanel, glm::vec3(0.5f, 0.15f, 0.05f));
         drawObject(mSubPanel, texBlack, sp, 0);
 
-        // 5 małych czerwonych diod
         for (int j = 0; j < 5; j++) {
             glm::mat4 mLed = glm::translate(mBase, glm::vec3(-0.15f + (j * 0.075f), 0.9f, 0.39f));
             mLed = glm::scale(mLed, glm::vec3(0.04f, 0.04f, 0.02f));
             drawObject(mLed, texRed, sp, 1);
         }
 
-        // Metalowa tabliczka
         glm::mat4 mPlate = glm::translate(mBase, glm::vec3(0.0f, 0.5f, 0.36f));
         mPlate = glm::scale(mPlate, glm::vec3(0.4f, 0.2f, 0.05f));
         drawObject(mPlate, texGauge, sp, 0);
     }
     else if (index == 1) {
-        // 4 kolorowe przyciski + 3 wajchy
         GLuint btnColors[4] = { texRed, texBlue, texGreen, texYellow };
         for (int r = 0; r < 2; r++) {
             for (int c = 0; c < 2; c++) {
@@ -514,7 +469,6 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
                 drawObject(mBtn, btnColors[r * 2 + c], sp, 1);
             }
         }
-        // Wajchy
         for (int sw = 0; sw < 3; sw++) {
             glm::mat4 mSw = glm::translate(mBase, glm::vec3(0.05f + (sw * 0.08f), 0.91f, 0.36f));
             mSw = glm::rotate(mSw, glm::radians(30.0f), glm::vec3(1, 0, 0));
@@ -523,19 +477,16 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
         }
     }
     else if (index == 2) {
-        // Mały czarny panel
         glm::mat4 mSubPanel = glm::translate(mBase, glm::vec3(0.0f, 0.9f, 0.36f));
         mSubPanel = glm::scale(mSubPanel, glm::vec3(0.5f, 0.15f, 0.05f));
         drawObject(mSubPanel, texBlack, sp, 0);
 
-        // Pasek postępu (3 zielone bloki)
         for (int j = 0; j < 3; j++) {
             glm::mat4 mBar = glm::translate(mBase, glm::vec3(-0.1f + (j * 0.1f), 0.9f, 0.39f));
             mBar = glm::scale(mBar, glm::vec3(0.08f, 0.08f, 0.02f));
             drawObject(mBar, texGreen, sp, 1);
         }
 
-        // Metalowa tabliczka
         glm::mat4 mPlate = glm::translate(mBase, glm::vec3(0.0f, 0.5f, 0.36f));
         mPlate = glm::scale(mPlate, glm::vec3(0.4f, 0.2f, 0.05f));
         drawObject(mPlate, texGauge, sp, 0);
@@ -546,7 +497,6 @@ void drawMainframeConsole(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
     mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
 
-    // Biurko Operatora
     glm::mat4 mDesk = glm::translate(mBase, glm::vec3(0.0f, 0.7f, 0.0f));
     mDesk = glm::scale(mDesk, glm::vec3(1.4f, 0.05f, 0.8f));
     drawObject(mDesk, texDesk, sp, 0);
@@ -559,7 +509,6 @@ void drawMainframeConsole(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     mLeg2 = glm::scale(mLeg2, glm::vec3(0.05f, 0.7f, 0.7f));
     drawObject(mLeg2, texBlack, sp, 0);
 
-    // RETRO TERMINAL
     glm::mat4 mMonBase = glm::translate(mBase, glm::vec3(0.0f, 0.75f, -0.1f));
     mMonBase = glm::scale(mMonBase, glm::vec3(0.25f, 0.1f, 0.25f));
     drawObject(mMonBase, texOdraFrame, sp, 0);
@@ -569,42 +518,47 @@ void drawMainframeConsole(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     mMonitor = glm::scale(mMonitor, glm::vec3(0.5f, 0.45f, 0.45f));
     drawObject(mMonitor, texOdraFrame, sp, 0);
 
-    // RETRO TERMINAL: Zielony Ekran
     glm::mat4 mScreen = glm::translate(mBase, glm::vec3(0.0f, 0.98f, 0.18f));
     mScreen = glm::rotate(mScreen, glm::radians(5.0f), glm::vec3(1, 0, 0));
     mScreen = glm::scale(mScreen, glm::vec3(0.42f, 0.35f, 0.02f));
     drawObject(mScreen, texGreen, sp, 1);
 
-    // Klawiatura
-    glm::mat4 mKeyb = glm::translate(mBase, glm::vec3(0.0f, 0.74f, 0.28f));
-    mKeyb = glm::rotate(mKeyb, glm::radians(10.0f), glm::vec3(1, 0, 0));
-    mKeyb = glm::scale(mKeyb, glm::vec3(0.6f, 0.04f, 0.2f));
-    drawObject(mKeyb, texBlack, sp, 0);
+    glm::mat4 mKeybDeck = glm::translate(mBase, glm::vec3(0.0f, 0.74f, 0.28f));
+    mKeybDeck = glm::rotate(mKeybDeck, glm::radians(10.0f), glm::vec3(1, 0, 0));
 
-    // Gruby kabel klawiatury
+    glm::mat4 mKeybBase = glm::scale(mKeybDeck, glm::vec3(0.6f, 0.04f, 0.2f));
+    drawObject(mKeybBase, texBlack, sp, 0);
+
+    for (int r = 0; r < 4; r++) {
+        for (int c = 0; c < 15; c++) {
+            if (r == 3 && c > 3 && c < 11) continue;
+            glm::mat4 mKey = glm::translate(mKeybDeck, glm::vec3(-0.24f + (c * 0.034f), 0.025f, -0.06f + (r * 0.035f)));
+            mKey = glm::scale(mKey, glm::vec3(0.028f, 0.015f, 0.028f));
+            drawObject(mKey, texOdraFrame, sp, 0);
+        }
+    }
+    glm::mat4 mSpace = glm::translate(mKeybDeck, glm::vec3(0.0f, 0.025f, 0.045f));
+    mSpace = glm::scale(mSpace, glm::vec3(0.23f, 0.015f, 0.028f));
+    drawObject(mSpace, texOdraFrame, sp, 0);
+
     glm::mat4 mCable = glm::translate(mBase, glm::vec3(0.0f, 0.73f, 0.12f));
     mCable = glm::scale(mCable, glm::vec3(0.02f, 0.02f, 0.2f));
     drawObject(mCable, texBlack, sp, 0);
 }
 
 void drawOdra1305(glm::vec3 centerPos, ShaderProgram* sp) {
-    // Wielka jednostka centralna
     glm::mat4 mCpuBase = glm::translate(glm::mat4(1.0f), centerPos + glm::vec3(0.0f, 1.0f, -3.0f));
     glm::mat4 mCpu = glm::scale(mCpuBase, glm::vec3(2.5f, 2.0f, 1.5f));
     drawObject(mCpu, texOdraFrame, sp, 0);
 
-    // POMARAŃCZOWY FRONT
     glm::mat4 mCpuFront = glm::translate(mCpuBase, glm::vec3(0.0f, 0.1f, 0.755f));
     mCpuFront = glm::scale(mCpuFront, glm::vec3(2.4f, 1.6f, 0.02f));
     drawObject(mCpuFront, texOdraPanel, sp, 0);
 
-    //DETALE NA CPU
-    // Panel sterowania
     glm::mat4 mCpuPanel = glm::translate(mCpuBase, glm::vec3(-0.5f, 0.3f, 0.76f));
     mCpuPanel = glm::scale(mCpuPanel, glm::vec3(0.8f, 0.4f, 0.05f));
     drawObject(mCpuPanel, texBlack, sp, 0);
 
-    // 4 czerwone przyciski (2x2) na panelu
     for (int r = 0; r < 2; r++) {
         for (int c = 0; c < 2; c++) {
             glm::mat4 mBtn = glm::translate(mCpuBase, glm::vec3(-0.7f + (c * 0.12f), 0.36f - (r * 0.12f), 0.79f));
@@ -613,27 +567,22 @@ void drawOdra1305(glm::vec3 centerPos, ShaderProgram* sp) {
         }
     }
 
-    // Czarne pokrętło obok przycisków
     glm::mat4 mDial = glm::translate(mCpuBase, glm::vec3(-0.35f, 0.3f, 0.79f));
     mDial = glm::scale(mDial, glm::vec3(0.12f, 0.12f, 0.03f));
     drawObject(mDial, texDesk, sp, 0);
 
-    // Szczeliny wentylacyjne (prawa strona CPU)
     for (int v = 0; v < 5; v++) {
         glm::mat4 mVent = glm::translate(mCpuBase, glm::vec3(0.2f + (v * 0.15f), 0.3f, 0.76f));
         mVent = glm::scale(mVent, glm::vec3(0.05f, 0.4f, 0.02f));
         drawObject(mVent, texBlack, sp, 0);
     }
 
-    // 3 Pamięci taśmowe pod wschodnią ścianą pokoju
     for (int i = 0; i < 3; i++) {
         drawTapeDrive(centerPos + glm::vec3(3.5f, 0.0f, -1.5f + (i * 1.2f)), -90.0f, sp, i);
     }
 
-    // Konsola operatora na środku pokoju
     drawMainframeConsole(centerPos + glm::vec3(0.0f, 0.0f, 0.0f), 0.0f, sp);
 
-    // Magistrala: Główny procesor (CPU)
     glm::mat4 mCable1 = glm::translate(glm::mat4(1.0f), centerPos + glm::vec3(0.0f, 0.05f, -1.65f));
     mCable1 = glm::scale(mCable1, glm::vec3(0.15f, 0.1f, 2.7f));
     drawObject(mCable1, texBlack, sp, 0);
@@ -669,6 +618,420 @@ void drawUltimateEniac(glm::vec3 centerPos, ShaderProgram* sp) {
     }
 }
 
+void drawClassicJoystick(glm::vec3 pos, float rotY, ShaderProgram* sp) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    glm::mat4 mJoyBase = glm::translate(mBase, glm::vec3(0.0f, 0.025f, 0.0f));
+    mJoyBase = glm::scale(mJoyBase, glm::vec3(0.12f, 0.05f, 0.12f));
+    drawObject(mJoyBase, texBlack, sp, 0);
+
+    glm::mat4 mStick = glm::translate(mBase, glm::vec3(0.0f, 0.12f, 0.0f));
+    mStick = glm::rotate(mStick, glm::radians(10.0f), glm::vec3(1, 0, 0));
+    mStick = glm::scale(mStick, glm::vec3(0.02f, 0.15f, 0.02f));
+    drawObject(mStick, texBlack, sp, 0);
+
+    glm::mat4 mBtn = glm::translate(mBase, glm::vec3(-0.04f, 0.055f, 0.04f));
+    mBtn = glm::scale(mBtn, glm::vec3(0.03f, 0.02f, 0.03f));
+    drawObject(mBtn, texRed, sp, 0);
+}
+
+void drawCommodore64(glm::vec3 pos, float rotY, ShaderProgram* sp) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    glm::mat4 mBody = glm::translate(mBase, glm::vec3(0.0f, 0.03f, 0.0f));
+    mBody = glm::scale(mBody, glm::vec3(0.55f, 0.06f, 0.35f));
+    drawObject(mBody, texC64Beige, sp, 0);
+    glm::mat4 mBack = glm::translate(mBase, glm::vec3(0.0f, 0.07f, -0.1f));
+    mBack = glm::scale(mBack, glm::vec3(0.55f, 0.06f, 0.15f));
+    drawObject(mBack, texC64Beige, sp, 0);
+
+    glm::mat4 mKeyArea = glm::translate(mBase, glm::vec3(0.0f, 0.075f, 0.05f));
+    mKeyArea = glm::rotate(mKeyArea, glm::radians(10.0f), glm::vec3(1, 0, 0));
+    mKeyArea = glm::scale(mKeyArea, glm::vec3(0.48f, 0.02f, 0.16f));
+    drawObject(mKeyArea, texDarkKeys, sp, 0);
+
+    for (int r = 0; r < 4; r++) {
+        for (int c = 0; c < 15; c++) {
+            if (r == 3 && c > 3 && c < 11) continue;
+            glm::mat4 mKey = glm::translate(mBase, glm::vec3(-0.22f + (c * 0.031f), 0.09f - (r * 0.005f), -0.01f + (r * 0.035f)));
+            mKey = glm::rotate(mKey, glm::radians(10.0f), glm::vec3(1, 0, 0));
+            mKey = glm::scale(mKey, glm::vec3(0.025f, 0.02f, 0.025f));
+            drawObject(mKey, texBlack, sp, 0);
+        }
+    }
+    glm::mat4 mSpace = glm::translate(mBase, glm::vec3(0.0f, 0.075f, 0.095f));
+    mSpace = glm::rotate(mSpace, glm::radians(10.0f), glm::vec3(1, 0, 0));
+    mSpace = glm::scale(mSpace, glm::vec3(0.2f, 0.02f, 0.025f));
+    drawObject(mSpace, texBlack, sp, 0);
+
+    glm::mat4 mMonBase = glm::translate(mBase, glm::vec3(0.0f, 0.0f, -0.35f));
+    glm::mat4 mMonitor = glm::translate(mMonBase, glm::vec3(0.0f, 0.25f, 0.0f));
+    mMonitor = glm::scale(mMonitor, glm::vec3(0.45f, 0.4f, 0.35f));
+    drawObject(mMonitor, texC64Beige, sp, 0);
+
+    glm::mat4 mScreen = glm::translate(mMonBase, glm::vec3(0.0f, 0.26f, 0.18f));
+    mScreen = glm::scale(mScreen, glm::vec3(0.38f, 0.3f, 0.02f));
+    drawObject(mScreen, texC64Screen, sp, 1);
+
+    glm::mat4 mFloppy = glm::translate(mBase, glm::vec3(0.45f, 0.06f, 0.0f));
+    mFloppy = glm::scale(mFloppy, glm::vec3(0.25f, 0.12f, 0.4f));
+    drawObject(mFloppy, texC64Beige, sp, 0);
+    glm::mat4 mFloppySlot = glm::translate(mBase, glm::vec3(0.45f, 0.06f, 0.205f));
+    mFloppySlot = glm::scale(mFloppySlot, glm::vec3(0.18f, 0.015f, 0.01f));
+    drawObject(mFloppySlot, texBlack, sp, 0);
+    glm::mat4 mFloppyLed = glm::translate(mBase, glm::vec3(0.38f, 0.03f, 0.205f));
+    mFloppyLed = glm::scale(mFloppyLed, glm::vec3(0.015f, 0.015f, 0.01f));
+    drawObject(mFloppyLed, texRed, sp, 1);
+
+    drawClassicJoystick(pos + glm::vec3(0.3f, 0.0f, 0.2f), 15.0f, sp);
+}
+
+void drawAtari(glm::vec3 pos, float rotY, ShaderProgram* sp) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    glm::mat4 mBodyFront = glm::translate(mBase, glm::vec3(0.0f, 0.025f, 0.05f));
+    mBodyFront = glm::scale(mBodyFront, glm::vec3(0.62f, 0.05f, 0.28f));
+    drawObject(mBodyFront, texAtariBeige, sp, 0);
+
+    glm::mat4 mBodyBack = glm::translate(mBase, glm::vec3(0.0f, 0.055f, -0.10f));
+    mBodyBack = glm::scale(mBodyBack, glm::vec3(0.62f, 0.055f, 0.22f));
+    drawObject(mBodyBack, texAtariBeige, sp, 0);
+
+    glm::mat4 mSideL = glm::translate(mBase, glm::vec3(-0.31f, 0.04f, -0.02f));
+    mSideL = glm::scale(mSideL, glm::vec3(0.01f, 0.07f, 0.46f));
+    drawObject(mSideL, texAtariBeige, sp, 0);
+
+    glm::mat4 mSideR = glm::translate(mBase, glm::vec3(0.31f, 0.04f, -0.02f));
+    mSideR = glm::scale(mSideR, glm::vec3(0.01f, 0.07f, 0.46f));
+    drawObject(mSideR, texAtariBeige, sp, 0);
+
+    glm::mat4 mSilver = glm::translate(mBase, glm::vec3(0.0f, 0.083f, -0.075f));
+    mSilver = glm::scale(mSilver, glm::vec3(0.60f, 0.008f, 0.19f));
+    drawObject(mSilver, texDesk, sp, 0);
+
+    glm::mat4 mLogo = glm::translate(mBase, glm::vec3(-0.18f, 0.088f, -0.06f));
+    mLogo = glm::scale(mLogo, glm::vec3(0.10f, 0.006f, 0.025f));
+    drawObject(mLogo, texBlack, sp, 0);
+
+    glm::mat4 mCart = glm::translate(mBase, glm::vec3(0.12f, 0.088f, -0.10f));
+    mCart = glm::scale(mCart, glm::vec3(0.16f, 0.008f, 0.06f));
+    drawObject(mCart, texBlack, sp, 0);
+
+    glm::mat4 mCartLed = glm::translate(mBase, glm::vec3(0.21f, 0.088f, -0.085f));
+    mCartLed = glm::scale(mCartLed, glm::vec3(0.012f, 0.008f, 0.012f));
+    drawObject(mCartLed, texRed, sp, 1);
+
+    glm::mat4 mKeyDeck = glm::translate(mBase, glm::vec3(-0.04f, 0.058f, 0.08f));
+    mKeyDeck = glm::rotate(mKeyDeck, glm::radians(8.0f), glm::vec3(1, 0, 0));
+
+    glm::mat4 mKeyArea = glm::scale(mKeyDeck, glm::vec3(0.50f, 0.005f, 0.16f));
+    drawObject(mKeyArea, texBlack, sp, 0);
+
+    for (int r = 0; r < 4; r++) {
+        for (int c = 0; c < 13; c++) {
+            if (r == 3 && c >= 3 && c <= 9) continue;
+            glm::mat4 mKey = glm::translate(mKeyDeck,
+                glm::vec3(-0.185f + (c * 0.031f), 0.008f, -0.055f + (r * 0.035f)));
+            mKey = glm::scale(mKey, glm::vec3(0.026f, 0.01f, 0.028f));
+            drawObject(mKey, texDarkKeys, sp, 0);
+        }
+    }
+
+    glm::mat4 mSpace = glm::translate(mKeyDeck, glm::vec3(-0.002f, 0.008f, 0.05f));
+    mSpace = glm::scale(mSpace, glm::vec3(0.21f, 0.01f, 0.028f));
+    drawObject(mSpace, texDarkKeys, sp, 0);
+
+    GLuint fnColors[4] = { texAtariBeige, texAtariBeige, texAtariBeige, texRed };
+    for (int f = 0; f < 4; f++) {
+        glm::mat4 mFn = glm::translate(mKeyDeck,
+            glm::vec3(0.225f, 0.008f, -0.055f + (f * 0.035f)));
+        mFn = glm::scale(mFn, glm::vec3(0.034f, 0.01f, 0.028f));
+        drawObject(mFn, fnColors[f], sp, f == 3 ? 0 : 0);
+    }
+
+    glm::mat4 mMonBase = glm::translate(mBase, glm::vec3(0.0f, 0.0f, -0.42f));
+
+    glm::mat4 mMonitor = glm::translate(mMonBase, glm::vec3(0.0f, 0.26f, 0.0f));
+    mMonitor = glm::scale(mMonitor, glm::vec3(0.52f, 0.44f, 0.42f));
+    drawObject(mMonitor, texAtariBeige, sp, 0);
+
+    glm::mat4 mBezel = glm::translate(mMonBase, glm::vec3(0.0f, 0.265f, 0.212f));
+    mBezel = glm::scale(mBezel, glm::vec3(0.47f, 0.39f, 0.015f));
+    drawObject(mBezel, texBlack, sp, 0);
+
+    glm::mat4 mScreen = glm::translate(mMonBase, glm::vec3(0.0f, 0.268f, 0.218f));
+    mScreen = glm::scale(mScreen, glm::vec3(0.40f, 0.32f, 0.012f));
+    drawObject(mScreen, texAtariScreen, sp, 1);
+
+    glm::mat4 mMonFoot = glm::translate(mMonBase, glm::vec3(0.0f, 0.03f, 0.05f));
+    mMonFoot = glm::scale(mMonFoot, glm::vec3(0.30f, 0.06f, 0.20f));
+    drawObject(mMonFoot, texAtariBeige, sp, 0);
+
+    glm::mat4 mKnob1 = glm::translate(mMonBase, glm::vec3(0.265f, 0.18f, 0.18f));
+    mKnob1 = glm::scale(mKnob1, glm::vec3(0.02f, 0.02f, 0.02f));
+    drawObject(mKnob1, texBlack, sp, 0);
+
+    glm::mat4 mKnob2 = glm::translate(mMonBase, glm::vec3(0.265f, 0.24f, 0.18f));
+    mKnob2 = glm::scale(mKnob2, glm::vec3(0.02f, 0.02f, 0.02f));
+    drawObject(mKnob2, texBlack, sp, 0);
+
+    glm::vec4 localJoyPos = glm::vec4(0.45f, 0.0f, 0.20f, 1.0f);
+    glm::vec3 joyWorldPos = glm::vec3(mBase * localJoyPos);
+
+    drawClassicJoystick(joyWorldPos, rotY - 20.0f, sp);
+
+    glm::mat4 mCable1 = glm::translate(mBase, glm::vec3(0.38f, 0.005f, 0.05f));
+    mCable1 = glm::scale(mCable1, glm::vec3(0.14f, 0.01f, 0.01f));
+    drawObject(mCable1, texBlack, sp, 0);
+
+    glm::mat4 mCable2 = glm::translate(mBase, glm::vec3(0.45f, 0.005f, 0.125f));
+    mCable2 = glm::scale(mCable2, glm::vec3(0.01f, 0.01f, 0.16f));
+    drawObject(mCable2, texBlack, sp, 0);
+}
+
+void drawRetroRoom(glm::vec3 centerPos, float rotY, ShaderProgram* sp) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), centerPos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    glm::mat4 mDeskTop = glm::translate(mBase, glm::vec3(0.0f, 0.75f, 0.0f));
+    mDeskTop = glm::scale(mDeskTop, glm::vec3(2.6f, 0.05f, 1.4f));
+    drawObject(mDeskTop, texWood, sp, 0);
+
+    glm::mat4 mLeg1 = glm::translate(mBase, glm::vec3(-1.2f, 0.375f, 0.0f));
+    mLeg1 = glm::scale(mLeg1, glm::vec3(0.05f, 0.75f, 1.3f));
+    drawObject(mLeg1, texWood, sp, 0);
+
+    glm::mat4 mLeg2 = glm::translate(mBase, glm::vec3(1.2f, 0.375f, 0.0f));
+    mLeg2 = glm::scale(mLeg2, glm::vec3(0.05f, 0.75f, 1.3f));
+    drawObject(mLeg2, texWood, sp, 0);
+
+    glm::vec3 c64Pos = glm::vec3(mBase * glm::vec4(-0.6f, 0.775f, 0.0f, 1.0f));
+    drawCommodore64(c64Pos, rotY + 10.0f, sp);
+
+    glm::vec3 atariPos = glm::vec3(mBase * glm::vec4(0.6f, 0.775f, 0.0f, 1.0f));
+    drawAtari(atariPos, rotY - 10.0f, sp);
+}
+
+void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+    float time = (float)glfwGetTime();
+
+    glm::mat4 mBody = glm::translate(mBase, glm::vec3(0.0f, 0.95f, 0.0f));
+    mBody = glm::scale(mBody, glm::vec3(1.5f, 1.9f, 1.5f));
+    drawObject(mBody, texBlack, sp, 0);
+
+    float sides[4][3] = {
+        { 0.0f,  0.0f,  0.76f},
+        { 0.0f,  0.0f, -0.76f},
+        { 0.76f, 0.0f,  0.0f},
+        {-0.76f, 0.0f,  0.0f},
+    };
+    float sideRotY[4] = { 0.0f, 180.0f, 90.0f, -90.0f };
+
+    for (int side = 0; side < 4; side++) {
+        glm::mat4 mSideBase = glm::translate(mBase,
+            glm::vec3(sides[side][0], 0.95f, sides[side][2]));
+        mSideBase = glm::rotate(mSideBase,
+            glm::radians(sideRotY[side]), glm::vec3(0, 1, 0));
+
+        glm::mat4 mGrid = glm::translate(mSideBase, glm::vec3(0.0f, 0.0f, 0.0f));
+        mGrid = glm::scale(mGrid, glm::vec3(1.45f, 1.85f, 0.04f));
+        drawObject(mGrid, texEniacBody, sp, 0);
+
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                float phase = sin(time * 4.0f + (row + col) * 0.7f +
+                    side * 1.3f);
+                float phase2 = sin(time * 2.5f + row * 1.1f - col * 0.9f);
+                int isLit = (phase > 0.2f && phase2 > -0.3f) ? 1 : 0;
+
+                GLuint ledColor = ((row * 8 + col + side * 7) % 12 == 0)
+                    ? texGreen : texRed;
+
+                glm::mat4 mLed = glm::translate(mSideBase,
+                    glm::vec3(-0.56f + col * 0.16f,
+                        -0.66f + row * 0.18f,
+                        0.025f));
+                mLed = glm::scale(mLed, glm::vec3(0.06f, 0.06f, 0.015f));
+                drawObject(mLed, ledColor, sp, isLit);
+            }
+        }
+    }
+
+    glm::mat4 mTop = glm::translate(mBase, glm::vec3(0.0f, 1.91f, 0.0f));
+    mTop = glm::scale(mTop, glm::vec3(1.52f, 0.04f, 1.52f));
+    drawObject(mTop, texDesk, sp, 0);
+
+    float corners[4][2] = { {-0.6f,-0.6f},{0.6f,-0.6f},{0.6f,0.6f},{-0.6f,0.6f} };
+    for (int c = 0; c < 4; c++) {
+        glm::mat4 mBolt = glm::translate(mBase,
+            glm::vec3(corners[c][0], 1.94f, corners[c][1]));
+        mBolt = glm::scale(mBolt, glm::vec3(0.05f, 0.02f, 0.05f));
+        drawObject(mBolt, texGauge, sp, 0);
+    }
+
+    glm::mat4 mBase2 = glm::translate(mBase, glm::vec3(0.0f, 0.05f, 0.0f));
+    mBase2 = glm::scale(mBase2, glm::vec3(1.65f, 0.1f, 1.65f));
+    drawObject(mBase2, texDesk, sp, 0);
+
+    for (int c = 0; c < 4; c++) {
+        glm::mat4 mWheel = glm::translate(mBase,
+            glm::vec3(corners[c][0] * 0.85f, 0.04f, corners[c][1] * 0.85f));
+        mWheel = glm::rotate(mWheel, glm::radians(90.0f), glm::vec3(1, 0, 0));
+        mWheel = glm::scale(mWheel, glm::vec3(0.06f, 0.04f, 0.06f));
+        drawCylinder(mWheel, texBlack, sp, 0);
+    }
+
+    glm::mat4 mConsole = glm::translate(mBase,
+        glm::vec3(0.0f, 0.78f, 0.92f));
+    mConsole = glm::scale(mConsole, glm::vec3(0.5f, 0.3f, 0.04f));
+    drawObject(mConsole, texEniacBody, sp, 0);
+
+    GLuint btnC[3] = { texRed, texGreen, texYellow };
+    for (int b = 0; b < 3; b++) {
+        glm::mat4 mBtn = glm::translate(mBase,
+            glm::vec3(-0.1f + b * 0.1f, 0.80f, 0.945f));
+        mBtn = glm::scale(mBtn, glm::vec3(0.05f, 0.05f, 0.02f));
+        drawObject(mBtn, btnC[b], sp, 1);
+    }
+
+    glm::mat4 mCable = glm::translate(mBase,
+        glm::vec3(0.3f, 0.5f, -0.77f));
+    mCable = glm::scale(mCable, glm::vec3(0.04f, 1.0f, 0.04f));
+    drawObject(mCable, texBlack, sp, 0);
+}
+
+void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    int numSeg = 12;
+    float arcDeg = 270.0f;
+    float radius = 0.85f;
+    float startAngle = -135.0f;
+
+    for (int i = 0; i < numSeg; i++) {
+        float t = (float)i / (numSeg - 1);
+        float angle = glm::radians(startAngle + t * arcDeg);
+
+        float sx = sin(angle) * radius;
+        float sz = cos(angle) * radius;
+
+        float towerRotY = glm::degrees(atan2(sx, sz)) + 180.0f;
+
+        glm::mat4 mTower = glm::translate(mBase,
+            glm::vec3(sx, 0.0f, sz));
+        mTower = glm::rotate(mTower,
+            glm::radians(towerRotY), glm::vec3(0, 1, 0));
+
+        glm::mat4 mCol = glm::translate(mTower,
+            glm::vec3(0.0f, 1.2f, 0.0f));
+        mCol = glm::scale(mCol, glm::vec3(0.30f, 2.4f, 0.22f));
+        drawObject(mCol, texAtariBeige, sp, 0);
+
+        glm::mat4 mInner = glm::translate(mTower,
+            glm::vec3(0.0f, 1.2f, 0.12f));
+        mInner = glm::scale(mInner, glm::vec3(0.24f, 2.35f, 0.02f));
+        drawObject(mInner, texBlack, sp, 0);
+
+        for (int strip = 0; strip < 5; strip++) {
+            glm::mat4 mStrip = glm::translate(mTower,
+                glm::vec3(0.0f, 0.28f + strip * 0.45f, 0.12f));
+            mStrip = glm::scale(mStrip, glm::vec3(0.27f, 0.015f, 0.025f));
+            drawObject(mStrip, texGauge, sp, 0);
+        }
+
+        for (int d = 0; d < 2; d++) {
+            int isLit = ((i * 3 + d) % 4 != 0) ? 1 : 0;
+            glm::mat4 mLed = glm::translate(mTower,
+                glm::vec3(-0.05f + d * 0.1f, 2.1f, 0.135f));
+            mLed = glm::scale(mLed, glm::vec3(0.025f, 0.025f, 0.01f));
+            drawObject(mLed, texGreen, sp, isLit);
+        }
+
+        glm::mat4 mBench = glm::translate(mTower,
+            glm::vec3(0.0f, 0.22f, 0.08f));
+        mBench = glm::scale(mBench, glm::vec3(0.32f, 0.44f, 0.55f));
+        drawObject(mBench, texDesk, sp, 0);
+
+        glm::mat4 mCushion = glm::translate(mTower,
+            glm::vec3(0.0f, 0.445f, 0.08f));
+        mCushion = glm::scale(mCushion, glm::vec3(0.30f, 0.045f, 0.53f));
+        drawObject(mCushion, texOdraPanel, sp, 0);
+
+        if (i < numSeg - 1) {
+            float t2 = (float)(i + 1) / (numSeg - 1);
+            float ang2 = glm::radians(startAngle + t2 * arcDeg);
+            float sx2 = sin(ang2) * (radius + 0.18f);
+            float sz2 = cos(ang2) * (radius + 0.18f);
+
+            float midX = (sx + sx2) * 0.5f;
+            float midZ = (sz + sz2) * 0.5f;
+            float cableLen = glm::distance(
+                glm::vec2(sx, sz), glm::vec2(sx2, sz2));
+            float cableAngle = glm::degrees(atan2(sx2 - sx, sz2 - sz));
+
+            glm::mat4 mCable = glm::translate(mBase,
+                glm::vec3(midX, 0.55f, midZ));
+            mCable = glm::rotate(mCable,
+                glm::radians(cableAngle), glm::vec3(0, 1, 0));
+            mCable = glm::scale(mCable,
+                glm::vec3(0.015f, 0.015f, cableLen + 0.02f));
+            drawObject(mCable, texBlack, sp, 0);
+
+            glm::mat4 mCable2 = glm::translate(mBase,
+                glm::vec3(midX, 1.3f, midZ));
+            mCable2 = glm::rotate(mCable2,
+                glm::radians(cableAngle), glm::vec3(0, 1, 0));
+            mCable2 = glm::scale(mCable2,
+                glm::vec3(0.012f, 0.012f, cableLen + 0.02f));
+            drawObject(mCable2, texBlack, sp, 0);
+        }
+    }
+
+    glm::mat4 mCenterPost = glm::translate(mBase,
+        glm::vec3(0.0f, 1.0f, 0.0f));
+    mCenterPost = glm::scale(mCenterPost,
+        glm::vec3(0.25f, 2.0f, 0.25f));
+    drawObject(mCenterPost, texOdraFrame, sp, 0);
+
+    glm::mat4 mCPanel = glm::translate(mBase,
+        glm::vec3(0.0f, 1.2f, 0.13f));
+    mCPanel = glm::scale(mCPanel, glm::vec3(0.18f, 0.4f, 0.02f));
+    drawObject(mCPanel, texBlack, sp, 0);
+
+    for (int d = 0; d < 6; d++) {
+        float time = (float)glfwGetTime();
+        int isLit = (sin(time * 3.0f + d * 1.1f) > 0.0f) ? 1 : 0;
+        glm::mat4 mLed = glm::translate(mBase,
+            glm::vec3(-0.06f + (d % 3) * 0.06f,
+                1.1f + (d / 3) * 0.1f,
+                0.145f));
+        mLed = glm::scale(mLed, glm::vec3(0.025f, 0.025f, 0.01f));
+        drawObject(mLed, texRed, sp, isLit);
+    }
+
+    int baseSegs = 16;
+    for (int b = 0; b < baseSegs; b++) {
+        float ba = glm::radians(b * (360.0f / baseSegs));
+        float bx = sin(ba) * 0.92f;
+        float bz = cos(ba) * 0.92f;
+        float bAngle = glm::degrees(ba);
+
+        glm::mat4 mBaseSeg = glm::translate(mBase,
+            glm::vec3(bx, 0.025f, bz));
+        mBaseSeg = glm::rotate(mBaseSeg,
+            glm::radians(bAngle), glm::vec3(0, 1, 0));
+        mBaseSeg = glm::scale(mBaseSeg,
+            glm::vec3(0.38f, 0.05f, 0.20f));
+        drawObject(mBaseSeg, texDesk, sp, 0);
+    }
+}
+
 void drawScene(GLFWwindow* window) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -686,16 +1049,11 @@ void drawScene(GLFWwindow* window) {
         glfwSetWindowTitle(window, "Muzeum Maszyn Cyfrowych");
     }
 
-    // Najpierw obliczamy nową jasność
     currentBrightness += (targetBrightness - currentBrightness) * 0.02f;
 
-    // Aktywujemy program (SHADER)
     spLambert->use();
-
-    // DOPIERO TERAZ wysyłamy jasność do aktywnego programu
     glUniform1f(spLambert->u("soundVolume"), currentBrightness);
 
-    // Aktualizacja rozglądania
     glm::vec3 front;
     front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
     front.y = sin(glm::radians(pitch));
@@ -703,50 +1061,39 @@ void drawScene(GLFWwindow* window) {
     cameraFront = glm::normalize(front);
 
     glm::mat4 V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-    // Pobieramy aktualny rozmiar okna
+
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
 
-    // Zabezpieczenie przed dzieleniem przez zero
     if (height == 0) height = 1;
     float aspectRatio = (float)width / (float)height;
 
-    // Używamy dynamicznego aspectRatio
     glm::mat4 P = glm::perspective(glm::radians(50.0f), aspectRatio, 0.1f, 100.0f);
 
     spLambert->use();
     glUniformMatrix4fv(spLambert->u("P"), 1, false, glm::value_ptr(P));
     glUniformMatrix4fv(spLambert->u("V"), 1, false, glm::value_ptr(V));
 
-    // Oświetlenie
     glm::vec4 lightPos[4] = {
-    glm::vec4(-5.0f, 2.5f, -5.0f, 1.0f), // Pokój Północno-Zachodni
-    glm::vec4(5.0f, 2.5f, -5.0f, 1.0f),  // Pokój Północno-Wschodni
-    glm::vec4(-5.0f, 2.5f,  5.0f, 1.0f), // Pokój Południowo-Zachodni
-    glm::vec4(5.0f, 2.5f,  5.0f, 1.0f)   // Pokój Południowo-Wschodni
+        glm::vec4(-5.0f, 2.5f, -5.0f, 1.0f),
+        glm::vec4(5.0f, 2.5f, -5.0f, 1.0f),
+        glm::vec4(-5.0f, 2.5f,  5.0f, 1.0f),
+        glm::vec4(5.0f, 2.5f,  5.0f, 1.0f)
     };
 
-    // Wysyłamy całą tablicę 4 wektorów do shadera
     glUniform4fv(spLambert->u("lightPositions"), 4, glm::value_ptr(lightPos[0]));
 
-    // BUDOWA POKOJU
-
-    // 1. PODŁOGA
     glm::mat4 mFloor = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)), glm::vec3(20.0f, 0.1f, 20.0f));
     drawObject(mFloor, texFloor, spLambert);
 
-    // SUFIT
     glm::mat4 mCeiling = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 4.05f, 0.0f)), glm::vec3(20.0f, 0.1f, 20.0f));
     drawObject(mCeiling, texCeiling, spLambert);
 
-    // LAMPY (Fizyczne modele)
     for (int i = 0; i < 4; i++) {
         glm::mat4 mLamp = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(lightPos[i].x, 3.98f, lightPos[i].z)), glm::vec3(1.2f, 0.05f, 1.2f));
-
         drawObject(mLamp, texLamp, spLambert, 1);
     }
 
-    // 2. ŚCIANY ZEWNĘTRZNE
     glm::mat4 mOuterN = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, -10.0f)), glm::vec3(20.0f, 4.0f, 0.5f));
     drawObject(mOuterN, texWall, spLambert);
     glm::mat4 mOuterS = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 10.0f)), glm::vec3(20.0f, 4.0f, 0.5f));
@@ -756,15 +1103,12 @@ void drawScene(GLFWwindow* window) {
     glm::mat4 mOuterE = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 2.0f, 0.0f)), glm::vec3(0.5f, 4.0f, 20.0f));
     drawObject(mOuterE, texWall, spLambert);
 
-    // 3. ŚCIANY WEWNĘTRZNE
-    // A) Centralny filar/krzyż
     glm::mat4 mCrossX = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)), glm::vec3(8.0f, 4.0f, 0.5f));
     drawObject(mCrossX, texBricks, spLambert);
 
     glm::mat4 mCrossZ = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)), glm::vec3(0.5f, 4.0f, 8.0f));
     drawObject(mCrossZ, texBricks, spLambert);
 
-    // B) Kawałki ścian przy drzwiach
     glm::mat4 mDoorX1 = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-8.0f, 2.0f, 0.0f)), glm::vec3(4.0f, 4.0f, 0.5f));
     drawObject(mDoorX1, texBricks, spLambert);
 
@@ -777,9 +1121,11 @@ void drawScene(GLFWwindow* window) {
     glm::mat4 mDoorZ2 = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 8.0f)), glm::vec3(0.5f, 4.0f, 4.0f));
     drawObject(mDoorZ2, texBricks, spLambert);
 
-    // 4. EKSPONATY
     drawUltimateEniac(glm::vec3(-5.0f, 0.0f, -6.0f), spLambert);
     drawOdra1305(glm::vec3(5.0f, 0.0f, -5.0f), spLambert);
+    drawRetroRoom(glm::vec3(5.0f, 0.0f, 5.0f), 180.0f, spLambert);
+    drawConnectionMachine(glm::vec3(-8.0f, 0.0f, 4.0f), 15.0f, spLambert);
+    drawCray1(glm::vec3(-4.5f, 0.0f, 6.5f), -45.0f, spLambert);
 
     glfwSwapBuffers(window);
 }
@@ -806,22 +1152,20 @@ int main(void) {
     }
     initOpenGLProgram(window);
 
-    // 1. Ładowanie modelu
     g_model = vosk_model_new("model");
     g_recognizer = vosk_recognizer_new(g_model, 16000.0);
 
-    // 2. Konfiguracja mikrofonu (Miniaudio)
     ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
-    deviceConfig.capture.format = ma_format_s16; // Vosk lubi 16-bit PCM
-    deviceConfig.capture.channels = 1;           // Mono
-    deviceConfig.sampleRate = 16000;             // 16kHz
+    deviceConfig.capture.format = ma_format_s16;
+    deviceConfig.capture.channels = 1;
+    deviceConfig.sampleRate = 16000;
     deviceConfig.dataCallback = data_callback;
 
     ma_device device;
     if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
         printf("Nie znaleziono mikrofonu!\n");
     }
-    ma_device_start(&device); // Start nasłuchiwania
+    ma_device_start(&device);
 
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
