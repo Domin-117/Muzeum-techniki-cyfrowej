@@ -94,7 +94,8 @@ std::vector<AABB> walls = {
     createBox(5.0f, 5.0f, 2.6f, 1.4f),
 
     createBox(-8.0f, 4.0f, 1.8f, 1.8f),
-    createBox(-4.5f, 6.5f, 2.6f, 2.6f),
+    createBox(-4.5f, 6.5f, 2.4f, 1.4f),
+    createBox(-4.5f, 6.5f, 1.4f, 2.4f)
 };
 
 bool checkCollision(glm::vec3 pos) {
@@ -993,127 +994,127 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
     mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+    float time = (float)glfwGetTime();
 
     int numSeg = 12;
     float arcDeg = 270.0f;
-    float radius = 0.85f;
+    float radius = 0.9f;
     float startAngle = -135.0f;
+
+    for (int b = 0; b < 36; b++) {
+        float ba = glm::radians(b * (360.0f / 36));
+        float bx = sin(ba) * 1.08f;
+        float bz = cos(ba) * 1.08f;
+        float bAngle = glm::degrees(ba);
+
+        glm::mat4 mBaseSeg = glm::translate(mBase, glm::vec3(bx, 0.025f, bz));
+        mBaseSeg = glm::rotate(mBaseSeg, glm::radians(bAngle), glm::vec3(0, 1, 0));
+        mBaseSeg = glm::scale(mBaseSeg, glm::vec3(0.20f, 0.05f, 0.20f));
+        drawObject(mBaseSeg, texDesk, sp, 0);
+
+        glm::mat4 mBaseRim = glm::translate(mBase, glm::vec3(bx * 0.98f, 0.06f, bz * 0.98f));
+        mBaseRim = glm::rotate(mBaseRim, glm::radians(bAngle), glm::vec3(0, 1, 0));
+        mBaseRim = glm::scale(mBaseRim, glm::vec3(0.20f, 0.03f, 0.05f));
+        drawObject(mBaseRim, texOdraPanel, sp, 0);
+    }
 
     for (int i = 0; i < numSeg; i++) {
         float t = (float)i / (numSeg - 1);
         float angle = glm::radians(startAngle + t * arcDeg);
-
         float sx = sin(angle) * radius;
         float sz = cos(angle) * radius;
-
         float towerRotY = glm::degrees(atan2(sx, sz)) + 180.0f;
 
-        glm::mat4 mTower = glm::translate(mBase,
-            glm::vec3(sx, 0.0f, sz));
-        mTower = glm::rotate(mTower,
-            glm::radians(towerRotY), glm::vec3(0, 1, 0));
+        glm::mat4 mTower = glm::translate(mBase, glm::vec3(sx, 0.0f, sz));
+        mTower = glm::rotate(mTower, glm::radians(towerRotY), glm::vec3(0, 1, 0));
 
-        glm::mat4 mCol = glm::translate(mTower,
-            glm::vec3(0.0f, 1.2f, 0.0f));
-        mCol = glm::scale(mCol, glm::vec3(0.30f, 2.4f, 0.22f));
-        drawObject(mCol, texAtariBeige, sp, 0);
+        glm::mat4 mCol = glm::translate(mTower, glm::vec3(0.0f, 1.15f, 0.0f));
+        mCol = glm::scale(mCol, glm::vec3(0.30f, 2.30f, 0.22f));
+        drawObject(mCol, texOdraFrame, sp, 0);
 
-        glm::mat4 mInner = glm::translate(mTower,
-            glm::vec3(0.0f, 1.2f, 0.12f));
-        mInner = glm::scale(mInner, glm::vec3(0.24f, 2.35f, 0.02f));
-        drawObject(mInner, texBlack, sp, 0);
+        glm::mat4 mSL = glm::translate(mTower, glm::vec3(-0.155f, 1.15f, 0.01f));
+        mSL = glm::scale(mSL, glm::vec3(0.01f, 2.28f, 0.20f));
+        drawObject(mSL, texOdraPanel, sp, 0);
 
-        for (int strip = 0; strip < 5; strip++) {
-            glm::mat4 mStrip = glm::translate(mTower,
-                glm::vec3(0.0f, 0.28f + strip * 0.45f, 0.12f));
-            mStrip = glm::scale(mStrip, glm::vec3(0.27f, 0.015f, 0.025f));
+        glm::mat4 mSR = glm::translate(mTower, glm::vec3(0.155f, 1.15f, 0.01f));
+        mSR = glm::scale(mSR, glm::vec3(0.01f, 2.28f, 0.20f));
+        drawObject(mSR, texOdraPanel, sp, 0);
+
+        glm::mat4 mFront = glm::translate(mTower, glm::vec3(0.0f, 1.15f, -0.12f));
+        mFront = glm::scale(mFront, glm::vec3(0.28f, 2.26f, 0.01f));
+        drawObject(mFront, texBlack, sp, 0);
+
+        glm::mat4 mBackPanel = glm::translate(mTower, glm::vec3(0.0f, 1.15f, 0.12f));
+        mBackPanel = glm::scale(mBackPanel, glm::vec3(0.28f, 2.26f, 0.01f));
+        drawObject(mBackPanel, texEniacBody, sp, 0);
+
+        for (int strip = 0; strip < 7; strip++) {
+            glm::mat4 mStrip = glm::translate(mTower, glm::vec3(0.0f, 0.30f + strip * 0.30f, 0.125f));
+            mStrip = glm::scale(mStrip, glm::vec3(0.29f, 0.018f, 0.010f));
             drawObject(mStrip, texGauge, sp, 0);
         }
 
-        for (int d = 0; d < 2; d++) {
-            int isLit = ((i * 3 + d) % 4 != 0) ? 1 : 0;
-            glm::mat4 mLed = glm::translate(mTower,
-                glm::vec3(-0.05f + d * 0.1f, 2.1f, 0.135f));
-            mLed = glm::scale(mLed, glm::vec3(0.025f, 0.025f, 0.01f));
-            drawObject(mLed, texGreen, sp, isLit);
+        for (int card = 0; card < 5; card++) {
+            glm::mat4 mCard = glm::translate(mTower, glm::vec3(0.0f, 0.42f + card * 0.30f, 0.124f));
+            mCard = glm::scale(mCard, glm::vec3(0.22f, 0.14f, 0.008f));
+            drawObject(mCard, texDesk, sp, 0);
+
+            for (int col = 0; col < 2; col++) {
+                int isLit = (sin(time * 1.5f + i * 1.1f + card * 0.6f + col * 2.3f) > 0.4f) ? 1 : 0;
+                GLuint cTex = (col == 0) ? texGreen : texYellow;
+                glm::mat4 mBackChip = glm::translate(mTower, glm::vec3(-0.05f + col * 0.10f, 0.42f + card * 0.30f, 0.128f));
+                mBackChip = glm::scale(mBackChip, glm::vec3(0.05f, 0.08f, 0.005f));
+                drawObject(mBackChip, cTex, sp, isLit);
+            }
         }
 
-        glm::mat4 mBench = glm::translate(mTower,
-            glm::vec3(0.0f, 0.22f, 0.08f));
-        mBench = glm::scale(mBench, glm::vec3(0.32f, 0.44f, 0.55f));
-        drawObject(mBench, texDesk, sp, 0);
+        for (int d = 0; d < 4; d++) {
+            int isLit = (sin(time * 1.8f + i * 0.9f + d * 1.5f) > 0.0f) ? 1 : 0;
+            GLuint ledTex = (d % 3 == 0) ? texGreen : texRed;
+            glm::mat4 mLed = glm::translate(mTower, glm::vec3(-0.10f + d * 0.068f, 2.20f, 0.126f));
+            mLed = glm::scale(mLed, glm::vec3(0.030f, 0.018f, 0.006f));
+            drawObject(mLed, ledTex, sp, isLit);
+        }
 
-        glm::mat4 mCushion = glm::translate(mTower,
-            glm::vec3(0.0f, 0.445f, 0.08f));
-        mCushion = glm::scale(mCushion, glm::vec3(0.30f, 0.045f, 0.53f));
-        drawObject(mCushion, texOdraPanel, sp, 0);
+        for (int d = 0; d < 4; d++) {
+            int isLit = (sin(time * 2.3f - i * 0.7f + d * 1.1f + 1.0f) > 0.15f) ? 1 : 0;
+            glm::mat4 mLed = glm::translate(mTower, glm::vec3(-0.10f + d * 0.068f, 0.26f, 0.126f));
+            mLed = glm::scale(mLed, glm::vec3(0.030f, 0.018f, 0.006f));
+            drawObject(mLed, texYellow, sp, isLit);
+        }
 
-        if (i < numSeg - 1) {
-            float t2 = (float)(i + 1) / (numSeg - 1);
-            float ang2 = glm::radians(startAngle + t2 * arcDeg);
-            float sx2 = sin(ang2) * (radius + 0.18f);
-            float sz2 = cos(ang2) * (radius + 0.18f);
-
-            float midX = (sx + sx2) * 0.5f;
-            float midZ = (sz + sz2) * 0.5f;
-            float cableLen = glm::distance(
-                glm::vec2(sx, sz), glm::vec2(sx2, sz2));
-            float cableAngle = glm::degrees(atan2(sx2 - sx, sz2 - sz));
-
-            glm::mat4 mCable = glm::translate(mBase,
-                glm::vec3(midX, 0.55f, midZ));
-            mCable = glm::rotate(mCable,
-                glm::radians(cableAngle), glm::vec3(0, 1, 0));
-            mCable = glm::scale(mCable,
-                glm::vec3(0.015f, 0.015f, cableLen + 0.02f));
-            drawObject(mCable, texBlack, sp, 0);
-
-            glm::mat4 mCable2 = glm::translate(mBase,
-                glm::vec3(midX, 1.3f, midZ));
-            mCable2 = glm::rotate(mCable2,
-                glm::radians(cableAngle), glm::vec3(0, 1, 0));
-            mCable2 = glm::scale(mCable2,
-                glm::vec3(0.012f, 0.012f, cableLen + 0.02f));
-            drawObject(mCable2, texBlack, sp, 0);
+        for (int d = 0; d < 5; d++) {
+            int isLit = (sin(time * 2.6f + i * 1.2f + d * 0.9f + 0.5f) > 0.1f) ? 1 : 0;
+            GLuint dTex = (d % 3 == 0) ? texGreen : ((d % 3 == 1) ? texRed : texYellow);
+            glm::mat4 mDin = glm::translate(mTower, glm::vec3(-0.08f + d * 0.04f, 2.10f, 0.126f));
+            mDin = glm::scale(mDin, glm::vec3(0.018f, 0.018f, 0.006f));
+            drawObject(mDin, dTex, sp, isLit);
         }
     }
 
-    glm::mat4 mCenterPost = glm::translate(mBase,
-        glm::vec3(0.0f, 1.0f, 0.0f));
-    mCenterPost = glm::scale(mCenterPost,
-        glm::vec3(0.25f, 2.0f, 0.25f));
-    drawObject(mCenterPost, texOdraFrame, sp, 0);
+    int benchSegs = 24;
+    float benchRadius = radius + 0.32f;
+    for (int b = 0; b < benchSegs; b++) {
+        float bt = (float)b / (benchSegs - 1);
+        float bangle = glm::radians(startAngle + bt * arcDeg);
+        float bx = sin(bangle) * benchRadius;
+        float bz = cos(bangle) * benchRadius;
+        float bRotY = glm::degrees(atan2(bx, bz)) + 180.0f;
 
-    glm::mat4 mCPanel = glm::translate(mBase,
-        glm::vec3(0.0f, 1.2f, 0.13f));
-    mCPanel = glm::scale(mCPanel, glm::vec3(0.18f, 0.4f, 0.02f));
-    drawObject(mCPanel, texBlack, sp, 0);
+        glm::mat4 mBench = glm::translate(mBase, glm::vec3(bx, 0.0f, bz));
+        mBench = glm::rotate(mBench, glm::radians(bRotY), glm::vec3(0, 1, 0));
 
-    for (int d = 0; d < 6; d++) {
-        float time = (float)glfwGetTime();
-        int isLit = (sin(time * 3.0f + d * 1.1f) > 0.0f) ? 1 : 0;
-        glm::mat4 mLed = glm::translate(mBase,
-            glm::vec3(-0.06f + (d % 3) * 0.06f,
-                1.1f + (d / 3) * 0.1f,
-                0.145f));
-        mLed = glm::scale(mLed, glm::vec3(0.025f, 0.025f, 0.01f));
-        drawObject(mLed, texRed, sp, isLit);
-    }
+        glm::mat4 mSeatBase = glm::translate(mBench, glm::vec3(0.0f, 0.21f, 0.0f));
+        mSeatBase = glm::scale(mSeatBase, glm::vec3(0.34f, 0.42f, 0.44f));
+        drawObject(mSeatBase, texDesk, sp, 0);
 
-    int baseSegs = 16;
-    for (int b = 0; b < baseSegs; b++) {
-        float ba = glm::radians(b * (360.0f / baseSegs));
-        float bx = sin(ba) * 0.92f;
-        float bz = cos(ba) * 0.92f;
-        float bAngle = glm::degrees(ba);
+        glm::mat4 mSeat = glm::translate(mBench, glm::vec3(0.0f, 0.44f, 0.0f));
+        mSeat = glm::scale(mSeat, glm::vec3(0.34f, 0.05f, 0.44f));
+        drawObject(mSeat, texOdraPanel, sp, 0);
 
-        glm::mat4 mBaseSeg = glm::translate(mBase,
-            glm::vec3(bx, 0.025f, bz));
-        mBaseSeg = glm::rotate(mBaseSeg,
-            glm::radians(bAngle), glm::vec3(0, 1, 0));
-        mBaseSeg = glm::scale(mBaseSeg,
-            glm::vec3(0.38f, 0.05f, 0.20f));
-        drawObject(mBaseSeg, texDesk, sp, 0);
+        glm::mat4 mSeatTrim = glm::translate(mBench, glm::vec3(0.0f, 0.025f, 0.21f));
+        mSeatTrim = glm::scale(mSeatTrim, glm::vec3(0.32f, 0.05f, 0.03f));
+        drawObject(mSeatTrim, texBlack, sp, 0);
     }
 }
 
