@@ -308,9 +308,17 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
     mCab = glm::scale(mCab, glm::vec3(1.1f, 3.5f, 0.8f));
     drawObject(mCab, texEniacBody, sp, 0);
 
-    glm::mat4 mVent = glm::translate(mBase, glm::vec3(0.0f, 0.3f, 0.41f));
-    mVent = glm::scale(mVent, glm::vec3(0.9f, 0.4f, 0.05f));
-    drawObject(mVent, texBlack, sp, 0);
+    for (int v = 0; v < 8; v++) {
+        glm::mat4 mVent = glm::translate(mBase, glm::vec3(-0.38f + v * 0.11f, 0.22f, 0.41f));
+        mVent = glm::scale(mVent, glm::vec3(0.06f, 0.28f, 0.04f));
+        drawObject(mVent, texBlack, sp, 0);
+    }
+
+    for (int v = 0; v < 4; v++) {
+        glm::mat4 mVentH = glm::translate(mBase, glm::vec3(0.0f, 0.12f + v * 0.07f, 0.41f));
+        mVentH = glm::scale(mVentH, glm::vec3(0.9f, 0.012f, 0.04f));
+        drawObject(mVentH, texBlack, sp, 0);
+    }
 
     glm::mat4 mDesk = glm::translate(mBase, glm::vec3(0.0f, 0.8f, 0.6f));
     mDesk = glm::scale(mDesk, glm::vec3(1.1f, 0.1f, 0.5f));
@@ -331,38 +339,67 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
     mPanelLow = glm::scale(mPanelLow, glm::vec3(0.9f, 0.6f, 0.05f));
     drawObject(mPanelLow, texBlack, sp, 0);
 
-    for (int i = 0; i < 5; i++) {
-        float xOffset = -0.35f + (i * 0.17f);
-        glm::mat4 mSwitch = glm::translate(mBase, glm::vec3(xOffset, 1.3f, 0.44f));
-        mSwitch = glm::scale(mSwitch, glm::vec3(0.03f, 0.15f, 0.06f));
-        drawObject(mSwitch, texCeiling, sp, 0);
-    }
-
-    glm::mat4 mPanelUp = glm::translate(mBase, glm::vec3(0.0f, 2.3f, 0.41f));
-    mPanelUp = glm::scale(mPanelUp, glm::vec3(0.9f, 1.0f, 0.05f));
-    drawObject(mPanelUp, texBlack, sp, 0);
-
-    for (int row = 0; row < 5; row++) {
-        for (int col = 0; col < 6; col++) {
-            int randVal = (seed + row * 7 + col * 3) % 10;
-            int isLit = (randVal > 3) ? 1 : 0;
-            GLuint currentTex = (randVal > 7) ? texGreen : texRed;
-
-            glm::mat4 mLight = glm::translate(mBase, glm::vec3(-0.35f + (col * 0.14f), 1.95f + (row * 0.18f), 0.44f));
-            mLight = glm::scale(mLight, glm::vec3(0.04f, 0.04f, 0.02f));
-            drawObject(mLight, currentTex, sp, isLit);
+    for (int row = 0; row < 3; row++) {
+        for (int col = 0; col < 10; col++) {
+            glm::mat4 mKnob = glm::translate(mBase, glm::vec3(-0.40f + col * 0.088f, 1.08f + row * 0.16f, 0.44f));
+            mKnob = glm::scale(mKnob, glm::vec3(0.045f, 0.045f, 0.025f));
+            drawObject(mKnob, texGauge, sp, 0);
+            glm::mat4 mKnobC = glm::translate(mBase, glm::vec3(-0.40f + col * 0.088f, 1.08f + row * 0.16f, 0.455f));
+            mKnobC = glm::scale(mKnobC, glm::vec3(0.018f, 0.018f, 0.01f));
+            drawObject(mKnobC, texBlack, sp, 0);
         }
     }
 
-    for (int k = 0; k < 8; k++) {
-        float startX = -0.35f + ((seed + k) % 8) * 0.1f;
-        float endX = -0.35f + ((seed + k * 2) % 8) * 0.1f;
-        float tangleAngle = (startX - endX) * 12.0f;
+    for (int i = 0; i < 5; i++) {
+        float xOffset = -0.35f + (i * 0.17f);
+        glm::mat4 mSwitch = glm::translate(mBase, glm::vec3(xOffset, 1.55f, 0.44f));
+        mSwitch = glm::scale(mSwitch, glm::vec3(0.025f, 0.12f, 0.04f));
+        drawObject(mSwitch, texCeiling, sp, 0);
+        glm::mat4 mSwitchTop = glm::translate(mBase, glm::vec3(xOffset, 1.62f, 0.445f));
+        mSwitchTop = glm::scale(mSwitchTop, glm::vec3(0.035f, 0.02f, 0.025f));
+        drawObject(mSwitchTop, texGauge, sp, 0);
+    }
 
-        glm::mat4 mCable = glm::translate(mBase, glm::vec3((startX + endX) / 2.0f, 1.335f, 0.545f));
-        mCable = glm::rotate(mCable, glm::radians(-13.0f), glm::vec3(1, 0, 0));
+    glm::mat4 mPanelUp = glm::translate(mBase, glm::vec3(0.0f, 2.4f, 0.41f));
+    mPanelUp = glm::scale(mPanelUp, glm::vec3(0.9f, 1.0f, 0.05f));
+    drawObject(mPanelUp, texBlack, sp, 0);
+
+    for (int row = 0; row < 6; row++) {
+        for (int col = 0; col < 8; col++) {
+            float lx = -0.37f + col * 0.105f;
+            float ly = 1.98f + row * 0.175f;
+
+            glm::mat4 mTubeBase = glm::translate(mBase, glm::vec3(lx, ly, 0.44f));
+            mTubeBase = glm::scale(mTubeBase, glm::vec3(0.040f, 0.030f, 0.020f));
+            drawObject(mTubeBase, texDesk, sp, 0);
+
+            glm::mat4 mTube = glm::translate(mBase, glm::vec3(lx, ly + 0.055f, 0.44f));
+            mTube = glm::scale(mTube, glm::vec3(0.028f, 0.075f, 0.028f));
+            int isGlowing = ((seed + row * 13 + col * 7) % 10 > 2) ? 1 : 0;
+            drawObject(mTube, isGlowing ? texYellow : texGauge, sp, isGlowing);
+
+            glm::mat4 mTubeTop = glm::translate(mBase, glm::vec3(lx, ly + 0.100f, 0.44f));
+            mTubeTop = glm::scale(mTubeTop, glm::vec3(0.016f, 0.020f, 0.016f));
+            drawObject(mTubeTop, texBlack, sp, 0);
+
+            for (int pin = 0; pin < 3; pin++) {
+                glm::mat4 mPin = glm::translate(mBase, glm::vec3(lx - 0.012f + pin * 0.012f, ly - 0.018f, 0.44f));
+                mPin = glm::scale(mPin, glm::vec3(0.004f, 0.022f, 0.004f));
+                drawObject(mPin, texBlack, sp, 0);
+            }
+        }
+    }
+
+    for (int k = 0; k < 12; k++) {
+        float startX = -0.35f + ((seed + k) % 9) * 0.085f;
+        float endX = -0.35f + ((seed + k * 3) % 9) * 0.085f;
+        float tangleAngle = (startX - endX) * 15.0f;
+        float ky = 1.25f + ((seed + k * 5) % 6) * 0.08f;
+
+        glm::mat4 mCable = glm::translate(mBase, glm::vec3((startX + endX) / 2.0f, ky, 0.55f));
+        mCable = glm::rotate(mCable, glm::radians(-15.0f + ((k % 3) - 1) * 8.0f), glm::vec3(1, 0, 0));
         mCable = glm::rotate(mCable, glm::radians(tangleAngle), glm::vec3(0, 0, 1));
-        mCable = glm::scale(mCable, glm::vec3(0.006f, 0.95f, 0.006f));
+        mCable = glm::scale(mCable, glm::vec3(0.007f, 0.80f + (k % 3) * 0.15f, 0.007f));
         drawObject(mCable, texBlack, sp, 0);
     }
 
@@ -371,34 +408,48 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
         mReader = glm::scale(mReader, glm::vec3(0.35f, 0.2f, 0.3f));
         drawObject(mReader, texDesk, sp, 0);
 
-        glm::mat4 mPaper = glm::translate(mBase, glm::vec3(0.2f, 0.98f, 0.85f));
-        mPaper = glm::rotate(mPaper, glm::radians(25.0f), glm::vec3(1, 0, 0));
-        mPaper = glm::scale(mPaper, glm::vec3(0.25f, 0.01f, 0.4f));
+        glm::mat4 mSlot = glm::translate(mBase, glm::vec3(0.2f, 0.96f, 0.82f));
+        mSlot = glm::scale(mSlot, glm::vec3(0.28f, 0.015f, 0.012f));
+        drawObject(mSlot, texBlack, sp, 0);
+
+        glm::mat4 mPaper = glm::translate(mBase, glm::vec3(0.2f, 0.98f, 0.88f));
+        mPaper = glm::rotate(mPaper, glm::radians(20.0f), glm::vec3(1, 0, 0));
+        mPaper = glm::scale(mPaper, glm::vec3(0.22f, 0.01f, 0.35f));
         drawObject(mPaper, texCard, sp, 0);
     }
 
-    glm::mat4 mTopPanel = glm::translate(mBase, glm::vec3(0.0f, 3.1f, 0.41f));
-    mTopPanel = glm::scale(mTopPanel, glm::vec3(0.85f, 0.4f, 0.05f));
+    glm::mat4 mTopPanel = glm::translate(mBase, glm::vec3(0.0f, 3.18f, 0.41f));
+    mTopPanel = glm::scale(mTopPanel, glm::vec3(0.88f, 0.26f, 0.05f));
     drawObject(mTopPanel, texDesk, sp, 0);
 
-    for (int i = 0; i < 2; i++) {
-        glm::mat4 mGauge = glm::translate(mBase, glm::vec3(-0.2f + (i * 0.4f), 3.15f, 0.44f));
-        mGauge = glm::scale(mGauge, glm::vec3(0.18f, 0.18f, 0.02f));
+    for (int i = 0; i < 3; i++) {
+        glm::mat4 mGauge = glm::translate(mBase, glm::vec3(-0.28f + (i * 0.28f), 3.20f, 0.445f));
+        mGauge = glm::scale(mGauge, glm::vec3(0.16f, 0.16f, 0.02f));
         drawObject(mGauge, texGauge, sp, 0);
+        glm::mat4 mNeedle = glm::translate(mBase, glm::vec3(-0.28f + (i * 0.28f) + ((seed + i) % 5 - 2) * 0.025f, 3.20f, 0.455f));
+        mNeedle = glm::rotate(mNeedle, glm::radians(-30.0f + ((seed + i) % 7) * 10.0f), glm::vec3(0, 0, 1));
+        mNeedle = glm::scale(mNeedle, glm::vec3(0.005f, 0.10f, 0.005f));
+        drawObject(mNeedle, texBlack, sp, 0);
     }
 
     for (int i = 0; i < 4; i++) {
-        glm::mat4 mStatus = glm::translate(mBase, glm::vec3(-0.3f + (i * 0.2f), 2.95f, 0.44f));
-        mStatus = glm::scale(mStatus, glm::vec3(0.12f, 0.04f, 0.02f));
-        drawObject(mStatus, texGreen, sp, 1);
+        GLuint sTex = ((seed + i) % 3 == 0) ? texGreen : texRed;
+        int isLit = ((seed + i * 3) % 4 > 1) ? 1 : 0;
+        glm::mat4 mStatus = glm::translate(mBase, glm::vec3(0.15f + (i * 0.055f), 3.10f, 0.445f));
+        mStatus = glm::scale(mStatus, glm::vec3(0.030f, 0.030f, 0.015f));
+        drawObject(mStatus, sTex, sp, isLit);
     }
 
     if (!isLast) {
-        for (int c = 0; c < 3; c++) {
-            glm::mat4 mLink = glm::translate(mBase, glm::vec3(0.6f, 0.5f + (c * 0.1f), 0.35f));
-            mLink = glm::scale(mLink, glm::vec3(1.2f, 0.02f, 0.02f));
-            drawObject(mLink, texBlack, sp, 0);
+        for (int c = 0; c < 5; c++) {
+            GLuint cTex = (c % 2 == 0) ? texBlack : texRed;
+            glm::mat4 mLink = glm::translate(mBase, glm::vec3(0.6f, 0.45f + (c * 0.08f), 0.35f));
+            mLink = glm::scale(mLink, glm::vec3(1.2f, 0.018f, 0.018f));
+            drawObject(mLink, cTex, sp, 0);
         }
+        glm::mat4 mBigLink = glm::translate(mBase, glm::vec3(0.6f, 0.85f, 0.38f));
+        mBigLink = glm::scale(mBigLink, glm::vec3(1.2f, 0.06f, 0.06f));
+        drawObject(mBigLink, texBlack, sp, 0);
     }
 }
 
