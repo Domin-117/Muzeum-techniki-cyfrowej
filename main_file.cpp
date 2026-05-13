@@ -471,11 +471,21 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
 
     float time = (float)glfwGetTime();
 
+    float tapePhase = time * 0.6f + index * 2.5f;
+    float tapeFill = (sin(tapePhase) + 1.0f) * 0.5f;
+    float spoolAngle = tapeFill * 35.0f;
+
     glm::mat4 mReel1 = glm::translate(mBase, glm::vec3(-0.22f, 1.9f, 0.39f));
-    mReel1 = glm::rotate(mReel1, time * 2.0f, glm::vec3(0, 0, 1));
+    mReel1 = glm::rotate(mReel1, spoolAngle, glm::vec3(0, 0, 1));
     mReel1 = glm::rotate(mReel1, glm::radians(90.0f), glm::vec3(1, 0, 0));
     mReel1 = glm::scale(mReel1, glm::vec3(0.28f, 0.04f, 0.28f));
     drawCylinder(mReel1, texCeiling, sp, 0);
+
+    float r1 = 0.085f + tapeFill * 0.17f;
+    glm::mat4 mTapeWound1 = glm::translate(mBase, glm::vec3(-0.22f, 1.9f, 0.39f));
+    mTapeWound1 = glm::rotate(mTapeWound1, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mTapeWound1 = glm::scale(mTapeWound1, glm::vec3(r1, 0.045f, r1));
+    drawCylinder(mTapeWound1, texBlack, sp, 0);
 
     glm::mat4 mHub1 = glm::translate(mBase, glm::vec3(-0.22f, 1.9f, 0.395f));
     mHub1 = glm::rotate(mHub1, glm::radians(90.0f), glm::vec3(1, 0, 0));
@@ -483,19 +493,55 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
     drawCylinder(mHub1, texBlack, sp, 0);
 
     glm::mat4 mReel2 = glm::translate(mBase, glm::vec3(0.22f, 1.9f, 0.39f));
-    mReel2 = glm::rotate(mReel2, time * 2.0f, glm::vec3(0, 0, 1));
+    mReel2 = glm::rotate(mReel2, spoolAngle, glm::vec3(0, 0, 1));
     mReel2 = glm::rotate(mReel2, glm::radians(90.0f), glm::vec3(1, 0, 0));
     mReel2 = glm::scale(mReel2, glm::vec3(0.28f, 0.04f, 0.28f));
     drawCylinder(mReel2, texCeiling, sp, 0);
+
+    float r2 = 0.085f + (1.0f - tapeFill) * 0.17f;
+    glm::mat4 mTapeWound2 = glm::translate(mBase, glm::vec3(0.22f, 1.9f, 0.39f));
+    mTapeWound2 = glm::rotate(mTapeWound2, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mTapeWound2 = glm::scale(mTapeWound2, glm::vec3(r2, 0.045f, r2));
+    drawCylinder(mTapeWound2, texBlack, sp, 0);
 
     glm::mat4 mHub2 = glm::translate(mBase, glm::vec3(0.22f, 1.9f, 0.395f));
     mHub2 = glm::rotate(mHub2, glm::radians(90.0f), glm::vec3(1, 0, 0));
     mHub2 = glm::scale(mHub2, glm::vec3(0.08f, 0.05f, 0.08f));
     drawCylinder(mHub2, texBlack, sp, 0);
 
-    glm::mat4 mTape = glm::translate(mBase, glm::vec3(0.0f, 1.75f, 0.39f));
-    mTape = glm::scale(mTape, glm::vec3(0.44f, 0.02f, 0.01f));
-    drawObject(mTape, texBlack, sp, 0);
+    float tapeWidth = 0.48f;
+    float tapeStartX = -0.24f;
+
+    float bottomOffset = tapeFill * 5.0f;
+    float topOffset = -tapeFill * 5.0f;
+
+    glm::mat4 mTapeBottom = glm::translate(mBase, glm::vec3(0.0f, 1.78f, 0.39f));
+    mTapeBottom = glm::scale(mTapeBottom, glm::vec3(tapeWidth, 0.02f, 0.01f));
+    drawObject(mTapeBottom, texBlack, sp, 0);
+
+    for (int m = 0; m < 5; m++) {
+        float fraction = fmod(bottomOffset + m * 0.2f, 1.0f);
+        if (fraction < 0.0f) fraction += 1.0f;
+        float mx = tapeStartX + fraction * tapeWidth;
+
+        glm::mat4 mMarker = glm::translate(mBase, glm::vec3(mx, 1.78f, 0.396f));
+        mMarker = glm::scale(mMarker, glm::vec3(0.015f, 0.022f, 0.003f));
+        drawObject(mMarker, texDesk, sp, 0);
+    }
+
+    glm::mat4 mTapeTop = glm::translate(mBase, glm::vec3(0.0f, 2.02f, 0.39f));
+    mTapeTop = glm::scale(mTapeTop, glm::vec3(tapeWidth, 0.02f, 0.01f));
+    drawObject(mTapeTop, texBlack, sp, 0);
+
+    for (int m = 0; m < 5; m++) {
+        float fraction = fmod(topOffset + m * 0.2f, 1.0f);
+        if (fraction < 0.0f) fraction += 1.0f;
+        float mx = tapeStartX + fraction * tapeWidth;
+
+        glm::mat4 mMarker = glm::translate(mBase, glm::vec3(mx, 2.02f, 0.396f));
+        mMarker = glm::scale(mMarker, glm::vec3(0.015f, 0.022f, 0.003f));
+        drawObject(mMarker, texDesk, sp, 0);
+    }
 
     if (index == 0) {
         glm::mat4 mSubPanel = glm::translate(mBase, glm::vec3(0.0f, 0.9f, 0.36f));
@@ -544,7 +590,6 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
         drawObject(mPlate, texGauge, sp, 0);
     }
 }
-
 void drawMainframeConsole(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
     mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
