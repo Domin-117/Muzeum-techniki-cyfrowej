@@ -1013,7 +1013,8 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                     glm::mat4 mPanel = glm::scale(mFace, glm::vec3(cubeSize - 0.02f, cubeSize - 0.02f, 0.008f));
                     drawObject(mPanel, texEniacBody, sp, 0);
                     for (int g = 0; g < 5; g++) {
-                        glm::mat4 mSlot = glm::translate(mFace, glm::vec3(-0.28f + g * 0.14f, 0.0f, 0.012f));
+                        // FIX: Obniżenie Z do 0.004f, aby zrównać z górną płaszczyzną
+                        glm::mat4 mSlot = glm::translate(mFace, glm::vec3(-0.28f + g * 0.14f, 0.0f, 0.004f));
                         mSlot = glm::scale(mSlot, glm::vec3(0.04f, 0.6f, 0.004f));
                         drawObject(mSlot, texBlack, sp, 0);
                     }
