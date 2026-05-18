@@ -1259,9 +1259,27 @@ void drawLightSwitch(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     drawObject(mBtn, texDesk, sp, 0);
 }
 
-AABB drawHuman(glm::vec3 pos, float faceYaw, float speed, bool walking, ShaderProgram* sp, int variant = 0) {
-    float time = (float)glfwGetTime();
+void drawBench(glm::vec3 pos, float rotY, ShaderProgram* sp) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
 
+    glm::mat4 mSeat = glm::translate(mBase, glm::vec3(0.0f, 0.45f, 0.0f));
+    mSeat = glm::scale(mSeat, glm::vec3(2.4f, 0.05f, 0.5f));
+    drawObject(mSeat, texWood, sp, 0);
+
+    for (int i = -1; i <= 1; i += 2) {
+        glm::mat4 mLegFront = glm::translate(mBase, glm::vec3(1.0f * i, 0.225f, 0.15f));
+        mLegFront = glm::scale(mLegFront, glm::vec3(0.05f, 0.45f, 0.05f));
+        drawObject(mLegFront, texBlack, sp, 0);
+
+        glm::mat4 mLegBack = glm::translate(mBase, glm::vec3(1.0f * i, 0.225f, -0.15f));
+        mLegBack = glm::scale(mLegBack, glm::vec3(0.05f, 0.45f, 0.05f));
+        drawObject(mLegBack, texBlack, sp, 0);
+    }
+}
+
+AABB drawHuman(glm::vec3 pos, float faceYaw, float speed, bool walking, ShaderProgram* sp, int variant = 0, bool sitting = false) {
+    float time = (float)glfwGetTime();
     const float S = 1.3f;
 
     float swing = walking ? sin(time * speed * 8.0f) * 35.0f : 0.0f;
@@ -1270,41 +1288,52 @@ AABB drawHuman(glm::vec3 pos, float faceYaw, float speed, bool walking, ShaderPr
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
     mBase = glm::rotate(mBase, glm::radians(faceYaw), glm::vec3(0, 1, 0));
 
-    GLuint shirtTex = (variant == 0) ? texOdraPanel
-        : (variant == 1) ? texBlue
-        : (variant == 2) ? texGreen
-        : (variant == 3) ? texDesk
-        : texRed;
+    GLuint shirtTex = (variant == 0) ? texOdraPanel : (variant == 1) ? texBlue : (variant == 2) ? texGreen : (variant == 3) ? texDesk : texRed;
     GLuint pantsTex = (variant < 4) ? texBlack : texEniacBody;
     GLuint skinTex = (variant == 2) ? texGauge : texCard;
-    GLuint hairTex = (variant == 0) ? texBlack
-        : (variant == 1) ? texYellow
-        : (variant == 2) ? texBlack
-        : (variant == 3) ? texRed
-        : texEniacBody;
+    GLuint hairTex = (variant == 0) ? texBlack : (variant == 1) ? texYellow : (variant == 2) ? texBlack : (variant == 3) ? texRed : texEniacBody;
     GLuint shoesTex = texBlack;
+
+    float sitOffset = sitting ? -0.15f * S : 0.0f;
 
     for (int leg = 0; leg < 2; leg++) {
         float lx = (leg == 0) ? -0.10f * S : 0.10f * S;
         float lSwing = (leg == 0) ? swing : -swing;
 
-        glm::mat4 mLegRoot = glm::translate(mBase, glm::vec3(lx, 0.52f * S + bob, 0.0f));
-        mLegRoot = glm::rotate(mLegRoot, glm::radians(lSwing), glm::vec3(1, 0, 0));
+        glm::mat4 mLegRoot = glm::translate(mBase, glm::vec3(lx, 0.52f * S + bob + sitOffset, 0.0f));
 
-        glm::mat4 mThigh = glm::translate(mLegRoot, glm::vec3(0.0f, -0.14f * S, 0.0f));
-        mThigh = glm::scale(mThigh, glm::vec3(0.155f * S, 0.28f * S, 0.155f * S));
-        drawObject(mThigh, pantsTex, sp, 0);
+        if (sitting) {
+            glm::mat4 mThigh = glm::translate(mLegRoot, glm::vec3(0.0f, 0.0f, 0.14f * S));
+            mThigh = glm::rotate(mThigh, glm::radians(90.0f), glm::vec3(1, 0, 0));
+            mThigh = glm::scale(mThigh, glm::vec3(0.155f * S, 0.28f * S, 0.155f * S));
+            drawObject(mThigh, pantsTex, sp, 0);
 
-        glm::mat4 mShin = glm::translate(mLegRoot, glm::vec3(0.0f, -0.36f * S, 0.0f));
-        mShin = glm::scale(mShin, glm::vec3(0.13f * S, 0.24f * S, 0.13f * S));
-        drawObject(mShin, pantsTex, sp, 0);
+            glm::mat4 mShin = glm::translate(mLegRoot, glm::vec3(0.0f, -0.20f * S, 0.28f * S));
+            mShin = glm::scale(mShin, glm::vec3(0.13f * S, 0.24f * S, 0.13f * S));
+            drawObject(mShin, pantsTex, sp, 0);
 
-        glm::mat4 mFoot = glm::translate(mLegRoot, glm::vec3(0.0f, -0.50f * S, 0.04f * S));
-        mFoot = glm::scale(mFoot, glm::vec3(0.14f * S, 0.07f * S, 0.20f * S));
-        drawObject(mFoot, shoesTex, sp, 0);
+            glm::mat4 mFoot = glm::translate(mLegRoot, glm::vec3(0.0f, -0.34f * S, 0.32f * S));
+            mFoot = glm::scale(mFoot, glm::vec3(0.14f * S, 0.07f * S, 0.20f * S));
+            drawObject(mFoot, shoesTex, sp, 0);
+        }
+        else {
+            mLegRoot = glm::rotate(mLegRoot, glm::radians(lSwing), glm::vec3(1, 0, 0));
+
+            glm::mat4 mThigh = glm::translate(mLegRoot, glm::vec3(0.0f, -0.14f * S, 0.0f));
+            mThigh = glm::scale(mThigh, glm::vec3(0.155f * S, 0.28f * S, 0.155f * S));
+            drawObject(mThigh, pantsTex, sp, 0);
+
+            glm::mat4 mShin = glm::translate(mLegRoot, glm::vec3(0.0f, -0.36f * S, 0.0f));
+            mShin = glm::scale(mShin, glm::vec3(0.13f * S, 0.24f * S, 0.13f * S));
+            drawObject(mShin, pantsTex, sp, 0);
+
+            glm::mat4 mFoot = glm::translate(mLegRoot, glm::vec3(0.0f, -0.50f * S, 0.04f * S));
+            mFoot = glm::scale(mFoot, glm::vec3(0.14f * S, 0.07f * S, 0.20f * S));
+            drawObject(mFoot, shoesTex, sp, 0);
+        }
     }
 
-    glm::mat4 mTorso = glm::translate(mBase, glm::vec3(0.0f, 0.78f * S + bob, 0.0f));
+    glm::mat4 mTorso = glm::translate(mBase, glm::vec3(0.0f, 0.78f * S + bob + sitOffset, 0.0f));
 
     glm::mat4 mBody = glm::scale(mTorso, glm::vec3(0.38f * S, 0.52f * S, 0.20f * S));
     drawObject(mBody, shirtTex, sp, 0);
@@ -1315,7 +1344,7 @@ AABB drawHuman(glm::vec3 pos, float faceYaw, float speed, bool walking, ShaderPr
 
     for (int arm = 0; arm < 2; arm++) {
         float ax = (arm == 0) ? -0.24f * S : 0.24f * S;
-        float aBase = 0.0f;
+        float aBase = sitting ? -15.0f : 0.0f;
         float aSwing = (arm == 0) ? -swing : swing;
 
         glm::mat4 mArmRoot = glm::translate(mTorso, glm::vec3(ax, 0.16f * S, 0.0f));
@@ -1410,6 +1439,9 @@ void drawScene(GLFWwindow* window) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     float time = (float)glfwGetTime();
+    static float lastT = (float)glfwGetTime();
+    float dt = time - lastT;
+    lastT = time;
 
     static int    currentWP = 0;
     static glm::vec3 currentPos = glm::vec3(-4.0f, 0.0f, -4.0f);
@@ -1417,21 +1449,17 @@ void drawScene(GLFWwindow* window) {
     static float targetYaw1 = 180.0f;
     static float waitTimer = 4.0f;
     static bool  isWalking = false;
-    static float lastT = (float)glfwGetTime();
 
     static std::vector<glm::vec3> waypoints = {
-        glm::vec3(-4.0f, 0.0f, -4.0f),
-        glm::vec3(0.0f,  0.0f, -5.0f),
-        glm::vec3(4.0f,  0.0f, -4.0f),
-        glm::vec3(5.0f,  0.0f,  0.0f),
-        glm::vec3(7.0f,  0.0f,  5.0f),
-        glm::vec3(0.0f,  0.0f,  5.0f),
-        glm::vec3(-4.0f, 0.0f,  4.0f),
-        glm::vec3(-5.0f, 0.0f,  0.0f),
+        glm::vec3(-4.0f, 0.0f, -4.0f), // Przed ENIAC
+        glm::vec3(0.0f,  0.0f, -5.0f), // Drzwi Północne
+        glm::vec3(4.0f,  0.0f, -4.0f), // Przed Odra
+        glm::vec3(5.0f,  0.0f,  0.0f), // Drzwi Wschodnie
+        glm::vec3(7.0f,  0.0f,  5.0f), // Retro Pokój
+        glm::vec3(0.0f,  0.0f,  5.0f), // Drzwi Południowe
+        glm::vec3(-4.0f, 0.0f,  4.0f), // Superkomputery
+        glm::vec3(-5.0f, 0.0f,  0.0f), // Drzwi Zachodnie
     };
-
-    float dt = time - lastT;
-    lastT = time;
 
     if (waitTimer > 0.0f) {
         waitTimer -= dt;
@@ -1456,12 +1484,8 @@ void drawScene(GLFWwindow* window) {
                 currentWP = nextWP;
                 currentPos = waypoints[nextWP];
 
-                if (currentWP % 2 == 0) {
-                    waitTimer = 4.0f;
-                }
-                else {
-                    waitTimer = 0.0f;
-                }
+                if (currentWP % 2 == 0) waitTimer = 4.0f;
+                else waitTimer = 0.0f;
             }
             else {
                 isWalking = true;
@@ -1479,6 +1503,8 @@ void drawScene(GLFWwindow* window) {
     while (t1YawDiff < -180.0f) t1YawDiff += 360.0f;
     currentYaw += t1YawDiff * 5.0f * dt;
 
+
+    // przy ENIAC-u
     static glm::vec3 t2Pos = glm::vec3(-7.0f, 0.0f, -6.8f);
     static float t2Yaw = 90.0f;
     static float t2Wait = 0.0f;
@@ -1518,9 +1544,8 @@ void drawScene(GLFWwindow* window) {
         }
     }
 
-    glm::vec3 odraPos(7.2f, 0.0f, -5.4f);
-    float odraYaw = 75.0f;
 
+    // Cray
     static float crayAngle = 0.0f;
     static float crayWait = 0.0f;
     static float crayTargetYaw = 90.0f;
@@ -1562,12 +1587,10 @@ void drawScene(GLFWwindow* window) {
     while (crayYawDiff > 180.0f) crayYawDiff -= 360.0f;
     while (crayYawDiff < -180.0f) crayYawDiff += 360.0f;
     crayYaw += crayYawDiff * 5.0f * dt;
-
     glm::vec3 crayWalker = crayCenter + glm::vec3(sin(crayAngle) * 2.2f, 0.0f, cos(crayAngle) * 2.2f);
 
-    glm::vec3 cmPos(-6.0f, 0.0f, 4.0f);
-    float cmYaw = -90.0f;
 
+    // Retro Room
     static glm::vec3 t6Pos = glm::vec3(4.0f, 0.0f, 3.6f);
     static float t6Yaw = 90.0f;
     static float t6TargetYaw = 90.0f;
@@ -1596,20 +1619,19 @@ void drawScene(GLFWwindow* window) {
             if (!t6VisitedCenter && ((t6Dir == 1 && t6Pos.x >= 5.0f) || (t6Dir == -1 && t6Pos.x <= 5.0f))) {
                 t6Pos.x = 5.0f;
                 t6VisitedCenter = true;
-                t6Wait = 4.0f;
+                t6Wait = 4.0f; // Patrzy na środek
             }
-
             if (t6Pos.x > 6.0f) {
                 t6Pos.x = 6.0f;
                 t6Dir = -1;
                 t6VisitedCenter = false;
-                t6Wait = 4.0f;
+                t6Wait = 8.0f; // Dłuższy postój
             }
             else if (t6Pos.x < 4.0f) {
                 t6Pos.x = 4.0f;
                 t6Dir = 1;
                 t6VisitedCenter = false;
-                t6Wait = 4.0f;
+                t6Wait = 8.0f; // Dłuższy postój
             }
         }
     }
@@ -1619,6 +1641,12 @@ void drawScene(GLFWwindow* window) {
     while (t6YawDiff < -180.0f) t6YawDiff += 360.0f;
     t6Yaw += t6YawDiff * 5.0f * dt;
 
+    glm::vec3 odraPos(7.2f, 0.0f, -5.4f);
+    float odraYaw = 75.0f;
+    glm::vec3 cmPos(-6.0f, 0.0f, 4.0f);
+    float cmYaw = -90.0f;
+    glm::vec3 benchPos(0.6f, 0.0f, -2.0f);
+
     npcBoxes.clear();
     const float S = 1.3f;
     float hw = 0.22f * S;
@@ -1626,6 +1654,7 @@ void drawScene(GLFWwindow* window) {
 
     npcBoxes.push_back(createBox(odraPos.x, odraPos.z, hw * 2.0f, hd * 2.0f));
     npcBoxes.push_back(createBox(cmPos.x, cmPos.z, hw * 2.0f, hd * 2.0f));
+    npcBoxes.push_back(createBox(benchPos.x, benchPos.z, 0.8f, 2.6f));
 
     npcBoxes.push_back(createBox(currentPos.x, currentPos.z, hw * 2.0f, hd * 2.0f));
     npcBoxes.push_back(createBox(t2Pos.x, t2Pos.z, hw * 2.0f, hd * 2.0f));
@@ -1682,9 +1711,7 @@ void drawScene(GLFWwindow* window) {
 
     for (int i = 0; i < 4; i++) {
         glm::mat4 mLamp = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(lightPos[i].x, 3.98f, lightPos[i].z)), glm::vec3(1.2f, 0.05f, 1.2f));
-
         int isLampOn = (currentBrightness > 0.5f) ? 1 : 0;
-
         drawObject(mLamp, texLamp, spLambert, isLampOn);
     }
 
@@ -1715,11 +1742,14 @@ void drawScene(GLFWwindow* window) {
         drawLightSwitch(sw.pos, sw.rotY, spLambert);
     }
 
+    drawBench(benchPos, 90.0f, spLambert);
+
     drawUltimateEniac(glm::vec3(-5.0f, 0.0f, -6.0f), spLambert);
     drawOdra1305(glm::vec3(5.0f, 0.0f, -5.0f), spLambert);
     drawRetroRoom(glm::vec3(5.0f, 0.0f, 5.0f), 180.0f, spLambert);
     drawConnectionMachine(glm::vec3(-8.0f, 0.0f, 4.0f), 15.0f, spLambert);
     drawCray1(glm::vec3(-4.5f, 0.0f, 6.5f), -45.0f, spLambert);
+
 
     drawHuman(currentPos, currentYaw, 1.0f, isWalking, spLambert, 0);
     drawHuman(t2Pos, t2Yaw, 0.9f, t2Walking, spLambert, 1);
@@ -1727,6 +1757,9 @@ void drawScene(GLFWwindow* window) {
     drawHuman(crayWalker, crayYaw, 1.0f, crayWalking, spLambert, 3);
     drawHuman(cmPos, cmYaw, 0.0f, false, spLambert, 4);
     drawHuman(t6Pos, t6Yaw, 0.8f, t6Walking, spLambert, 1);
+
+    drawHuman(benchPos + glm::vec3(0.0f, 0.0f, -0.6f), 90.0f, 0.0f, false, spLambert, 1, true);
+    drawHuman(benchPos + glm::vec3(0.0f, 0.0f, 0.6f), 110.0f, 0.0f, false, spLambert, 3, true);
 
     glfwSwapBuffers(window);
 }
