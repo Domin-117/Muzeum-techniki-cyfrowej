@@ -157,6 +157,19 @@ float cubeVertices[] = {
      -0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f,   0.0f, 1.0f
 };
 
+// Struktura i pozycje włączników światła
+struct LightSwitch {
+    glm::vec3 pos;
+    float rotY;
+};
+
+std::vector<LightSwitch> lightSwitches = {
+    { glm::vec3(-0.26f, 1.3f, -2.0f), -90.0f }, // Ściana od strony ENIAC
+    { glm::vec3(2.0f, 1.3f, -0.26f), 180.0f },  // Ściana od strony ODRA
+    { glm::vec3(0.26f, 1.3f, 2.0f), 90.0f },    // Ściana od strony pokoju Retro
+    { glm::vec3(-2.0f, 1.3f, 0.26f), 0.0f }     // Ściana od strony maszyn Cray/CM
+};
+
 GLuint readTexture(const char* filename) {
     std::vector<unsigned char> image;
     unsigned width, height;
@@ -193,6 +206,27 @@ void error_callback(int error, const char* description) {
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    }
+
+    // Obsługa wciskania klawisza 'E'
+    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+        bool nearSwitch = false;
+        for (const auto& sw : lightSwitches) {
+            // Zasięg użycia przycisku
+            if (glm::distance(cameraPos, sw.pos) < 1.5f) {
+                nearSwitch = true;
+                break;
+            }
+        }
+
+        if (nearSwitch) {
+            if (targetBrightness > 0.5f) {
+                targetBrightness = 0.2f; // Zgaś światło
+            }
+            else {
+                targetBrightness = 1.0f; // Zapal światło
+            }
+        }
     }
 }
 
@@ -1208,6 +1242,31 @@ void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     }
 }
 
+// -------------------------------------------------------
+// WŁĄCZNIK ŚWIATŁA (rysowanie)
+// -------------------------------------------------------
+void drawLightSwitch(glm::vec3 pos, float rotY, ShaderProgram* sp) {
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    // Ramka włącznika (biała)
+    glm::mat4 mFrame = glm::scale(mBase, glm::vec3(0.12f, 0.16f, 0.01f));
+    drawObject(mFrame, texCeiling, sp, 0);
+
+    // Animacja przycisku powiązana z jasnością światła
+    float animVal = (currentBrightness - 0.2f) / 0.8f;
+    if (animVal > 1.0f) animVal = 1.0f;
+    if (animVal < 0.0f) animVal = 0.0f;
+
+    // Kąt od -15 (wyłączone) do 15 (włączone)
+    float switchAngle = -15.0f + (animVal * 30.0f);
+
+    glm::mat4 mBtnBase = glm::translate(mBase, glm::vec3(0.0f, 0.0f, 0.005f));
+    glm::mat4 mBtn = glm::rotate(mBtnBase, glm::radians(switchAngle), glm::vec3(1, 0, 0));
+    mBtn = glm::scale(mBtn, glm::vec3(0.06f, 0.08f, 0.015f));
+    drawObject(mBtn, texDesk, sp, 0);
+}
+
 AABB drawHuman(glm::vec3 pos, float faceYaw, float speed, bool walking, ShaderProgram* sp, int variant = 0) {
     float time = (float)glfwGetTime();
 
@@ -1631,7 +1690,11 @@ void drawScene(GLFWwindow* window) {
 
     for (int i = 0; i < 4; i++) {
         glm::mat4 mLamp = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(lightPos[i].x, 3.98f, lightPos[i].z)), glm::vec3(1.2f, 0.05f, 1.2f));
-        drawObject(mLamp, texLamp, spLambert, 1);
+
+        // Lampa wygląda na włączoną tylko, gdy ogólna jasność pomieszczenia jest wysoka
+        int isLampOn = (currentBrightness > 0.5f) ? 1 : 0;
+
+        drawObject(mLamp, texLamp, spLambert, isLampOn);
     }
 
     glm::mat4 mOuterN = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, -10.0f)), glm::vec3(20.0f, 4.0f, 0.5f));
@@ -1656,6 +1719,10 @@ void drawScene(GLFWwindow* window) {
     drawObject(mDoorZ1, texBricks, spLambert);
     glm::mat4 mDoorZ2 = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 8.0f)), glm::vec3(0.5f, 4.0f, 4.0f));
     drawObject(mDoorZ2, texBricks, spLambert);
+
+    for (const auto& sw : lightSwitches) {
+        drawLightSwitch(sw.pos, sw.rotY, spLambert);
+    }
 
     drawUltimateEniac(glm::vec3(-5.0f, 0.0f, -6.0f), spLambert);
     drawOdra1305(glm::vec3(5.0f, 0.0f, -5.0f), spLambert);
