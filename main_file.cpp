@@ -208,11 +208,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         glfwSetWindowShouldClose(window, true);
     }
 
-    // Obsługa wciskania klawisza 'E'
     if (key == GLFW_KEY_E && action == GLFW_PRESS) {
         bool nearSwitch = false;
         for (const auto& sw : lightSwitches) {
-            // Zasięg użycia przycisku
             if (glm::distance(cameraPos, sw.pos) < 1.5f) {
                 nearSwitch = true;
                 break;
@@ -1242,23 +1240,17 @@ void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     }
 }
 
-// -------------------------------------------------------
-// WŁĄCZNIK ŚWIATŁA (rysowanie)
-// -------------------------------------------------------
 void drawLightSwitch(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
     mBase = glm::rotate(mBase, glm::radians(rotY), glm::vec3(0, 1, 0));
 
-    // Ramka włącznika (biała)
     glm::mat4 mFrame = glm::scale(mBase, glm::vec3(0.12f, 0.16f, 0.01f));
     drawObject(mFrame, texCeiling, sp, 0);
 
-    // Animacja przycisku powiązana z jasnością światła
     float animVal = (currentBrightness - 0.2f) / 0.8f;
     if (animVal > 1.0f) animVal = 1.0f;
     if (animVal < 0.0f) animVal = 0.0f;
 
-    // Kąt od -15 (wyłączone) do 15 (włączone)
     float switchAngle = -15.0f + (animVal * 30.0f);
 
     glm::mat4 mBtnBase = glm::translate(mBase, glm::vec3(0.0f, 0.0f, 0.005f));
@@ -1691,7 +1683,6 @@ void drawScene(GLFWwindow* window) {
     for (int i = 0; i < 4; i++) {
         glm::mat4 mLamp = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(lightPos[i].x, 3.98f, lightPos[i].z)), glm::vec3(1.2f, 0.05f, 1.2f));
 
-        // Lampa wygląda na włączoną tylko, gdy ogólna jasność pomieszczenia jest wysoka
         int isLampOn = (currentBrightness > 0.5f) ? 1 : 0;
 
         drawObject(mLamp, texLamp, spLambert, isLampOn);
