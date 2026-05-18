@@ -98,17 +98,23 @@ std::vector<AABB> walls = {
     createBox(-4.5f, 6.5f, 1.4f, 2.4f)
 };
 
+std::vector<AABB> npcBoxes;
+
 bool checkCollision(glm::vec3 pos) {
     float playerRadius = 0.2f;
 
     for (const auto& wall : walls) {
         bool collisionX = pos.x + playerRadius > wall.minX && pos.x - playerRadius < wall.maxX;
         bool collisionZ = pos.z + playerRadius > wall.minZ && pos.z - playerRadius < wall.maxZ;
-
-        if (collisionX && collisionZ) {
-            return true;
-        }
+        if (collisionX && collisionZ) return true;
     }
+
+    for (const auto& npc : npcBoxes) {
+        bool collisionX = pos.x + playerRadius > npc.minX && pos.x - playerRadius < npc.maxX;
+        bool collisionZ = pos.z + playerRadius > npc.minZ && pos.z - playerRadius < npc.maxZ;
+        if (collisionX && collisionZ) return true;
+    }
+
     return false;
 }
 
@@ -920,7 +926,6 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     float cubeSize = 0.75f;
     float half = cubeSize / 2.0f;
 
-    // 8 szescianow w ukladzie 2x2x2
     for (int ix = 0; ix < 2; ix++) {
         for (int iy = 0; iy < 2; iy++) {
             for (int iz = 0; iz < 2; iz++) {
@@ -935,7 +940,6 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 
                 float fh = half + 0.005f;
 
-                // przednia scianka zewnetrzna
                 if (iz == 1) {
                     glm::mat4 mFace = glm::translate(mSub, glm::vec3(0.0f, 0.0f, fh));
                     glm::mat4 mPanel = glm::scale(mFace, glm::vec3(cubeSize - 0.02f, cubeSize - 0.02f, 0.008f));
@@ -952,7 +956,6 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                     }
                 }
 
-                // tylna scianka zewnetrzna
                 if (iz == 0) {
                     glm::mat4 mFace = glm::translate(mSub, glm::vec3(0.0f, 0.0f, -fh));
                     mFace = glm::rotate(mFace, glm::radians(180.0f), glm::vec3(0, 1, 0));
@@ -970,7 +973,6 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                     }
                 }
 
-                // prawa scianka zewnetrzna
                 if (ix == 1) {
                     glm::mat4 mFace = glm::translate(mSub, glm::vec3(fh, 0.0f, 0.0f));
                     mFace = glm::rotate(mFace, glm::radians(90.0f), glm::vec3(0, 1, 0));
@@ -988,7 +990,6 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                     }
                 }
 
-                // lewa scianka zewnetrzna
                 if (ix == 0) {
                     glm::mat4 mFace = glm::translate(mSub, glm::vec3(-fh, 0.0f, 0.0f));
                     mFace = glm::rotate(mFace, glm::radians(-90.0f), glm::vec3(0, 1, 0));
@@ -1006,14 +1007,12 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                     }
                 }
 
-                // gorna scianka
                 if (iy == 1) {
                     glm::mat4 mFace = glm::translate(mSub, glm::vec3(0.0f, fh, 0.0f));
                     mFace = glm::rotate(mFace, glm::radians(-90.0f), glm::vec3(1, 0, 0));
                     glm::mat4 mPanel = glm::scale(mFace, glm::vec3(cubeSize - 0.02f, cubeSize - 0.02f, 0.008f));
                     drawObject(mPanel, texEniacBody, sp, 0);
                     for (int g = 0; g < 5; g++) {
-                        // FIX: Obniżenie Z do 0.004f, aby zrównać z górną płaszczyzną
                         glm::mat4 mSlot = glm::translate(mFace, glm::vec3(-0.28f + g * 0.14f, 0.0f, 0.004f));
                         mSlot = glm::scale(mSlot, glm::vec3(0.04f, 0.6f, 0.004f));
                         drawObject(mSlot, texBlack, sp, 0);
@@ -1023,12 +1022,10 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
         }
     }
 
-    // wcięcia
     float grooveDepth = 0.03f;
     float grooveW = 0.05f;
     float grooveThin = 0.004f;
 
-    // przednia sciana
     glm::mat4 mGV = glm::translate(mBase, glm::vec3(0.0f, cubeSize, cubeSize - grooveDepth));
     mGV = glm::scale(mGV, glm::vec3(grooveW, cubeSize * 2.0f, grooveThin));
     drawObject(mGV, texEniacBody, sp, 0);
@@ -1036,7 +1033,6 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     mGH = glm::scale(mGH, glm::vec3(cubeSize * 2.0f, grooveW, grooveThin));
     drawObject(mGH, texEniacBody, sp, 0);
 
-    // tylna sciana
     glm::mat4 mGV2 = glm::translate(mBase, glm::vec3(0.0f, cubeSize, -(cubeSize - grooveDepth)));
     mGV2 = glm::scale(mGV2, glm::vec3(grooveW, cubeSize * 2.0f, grooveThin));
     drawObject(mGV2, texEniacBody, sp, 0);
@@ -1044,7 +1040,6 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     mGH2 = glm::scale(mGH2, glm::vec3(cubeSize * 2.0f, grooveW, grooveThin));
     drawObject(mGH2, texEniacBody, sp, 0);
 
-    // prawa sciana
     glm::mat4 mGV3 = glm::translate(mBase, glm::vec3(cubeSize - grooveDepth, cubeSize, 0.0f));
     mGV3 = glm::scale(mGV3, glm::vec3(grooveThin, cubeSize * 2.0f, grooveW));
     drawObject(mGV3, texEniacBody, sp, 0);
@@ -1052,7 +1047,6 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     mGH3 = glm::scale(mGH3, glm::vec3(grooveThin, grooveW, cubeSize * 2.0f));
     drawObject(mGH3, texEniacBody, sp, 0);
 
-    // lewa sciana
     glm::mat4 mGV4 = glm::translate(mBase, glm::vec3(-(cubeSize - grooveDepth), cubeSize, 0.0f));
     mGV4 = glm::scale(mGV4, glm::vec3(grooveThin, cubeSize * 2.0f, grooveW));
     drawObject(mGV4, texEniacBody, sp, 0);
@@ -1060,7 +1054,6 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     mGH4 = glm::scale(mGH4, glm::vec3(grooveThin, grooveW, cubeSize * 2.0f));
     drawObject(mGH4, texEniacBody, sp, 0);
 
-    // podstawa z kolkami
     float baseW = cubeSize * 2.0f + 0.1f;
     glm::mat4 mRim = glm::translate(mBase, glm::vec3(0.0f, 0.04f, 0.0f));
     mRim = glm::scale(mRim, glm::vec3(baseW, 0.08f, baseW));
@@ -1215,22 +1208,389 @@ void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     }
 }
 
+AABB drawHuman(glm::vec3 pos, float faceYaw, float speed, bool walking, ShaderProgram* sp, int variant = 0) {
+    float time = (float)glfwGetTime();
+
+    const float S = 1.3f;
+
+    float swing = walking ? sin(time * speed * 8.0f) * 35.0f : 0.0f;
+    float bob = walking ? abs(sin(time * speed * 8.0f)) * 0.04f * S : 0.0f;
+
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+    mBase = glm::rotate(mBase, glm::radians(faceYaw), glm::vec3(0, 1, 0));
+
+    GLuint shirtTex = (variant == 0) ? texOdraPanel
+        : (variant == 1) ? texBlue
+        : (variant == 2) ? texGreen
+        : (variant == 3) ? texDesk
+        : texRed;
+    GLuint pantsTex = (variant < 4) ? texBlack : texEniacBody;
+    GLuint skinTex = (variant == 2) ? texGauge : texCard;
+    GLuint hairTex = (variant == 0) ? texBlack
+        : (variant == 1) ? texYellow
+        : (variant == 2) ? texBlack
+        : (variant == 3) ? texRed
+        : texEniacBody;
+    GLuint shoesTex = texBlack;
+
+    for (int leg = 0; leg < 2; leg++) {
+        float lx = (leg == 0) ? -0.10f * S : 0.10f * S;
+        float lSwing = (leg == 0) ? swing : -swing;
+
+        glm::mat4 mLegRoot = glm::translate(mBase, glm::vec3(lx, 0.52f * S + bob, 0.0f));
+        mLegRoot = glm::rotate(mLegRoot, glm::radians(lSwing), glm::vec3(1, 0, 0));
+
+        glm::mat4 mThigh = glm::translate(mLegRoot, glm::vec3(0.0f, -0.14f * S, 0.0f));
+        mThigh = glm::scale(mThigh, glm::vec3(0.155f * S, 0.28f * S, 0.155f * S));
+        drawObject(mThigh, pantsTex, sp, 0);
+
+        glm::mat4 mShin = glm::translate(mLegRoot, glm::vec3(0.0f, -0.36f * S, 0.0f));
+        mShin = glm::scale(mShin, glm::vec3(0.13f * S, 0.24f * S, 0.13f * S));
+        drawObject(mShin, pantsTex, sp, 0);
+
+        glm::mat4 mFoot = glm::translate(mLegRoot, glm::vec3(0.0f, -0.50f * S, 0.04f * S));
+        mFoot = glm::scale(mFoot, glm::vec3(0.14f * S, 0.07f * S, 0.20f * S));
+        drawObject(mFoot, shoesTex, sp, 0);
+    }
+
+    glm::mat4 mTorso = glm::translate(mBase, glm::vec3(0.0f, 0.78f * S + bob, 0.0f));
+
+    glm::mat4 mBody = glm::scale(mTorso, glm::vec3(0.38f * S, 0.52f * S, 0.20f * S));
+    drawObject(mBody, shirtTex, sp, 0);
+
+    glm::mat4 mCollar = glm::translate(mTorso, glm::vec3(0.0f, 0.22f * S, 0.06f * S));
+    mCollar = glm::scale(mCollar, glm::vec3(0.18f * S, 0.06f * S, 0.06f * S));
+    drawObject(mCollar, texCeiling, sp, 0);
+
+    for (int arm = 0; arm < 2; arm++) {
+        float ax = (arm == 0) ? -0.24f * S : 0.24f * S;
+        float aBase = 0.0f;
+        float aSwing = (arm == 0) ? -swing : swing;
+
+        glm::mat4 mArmRoot = glm::translate(mTorso, glm::vec3(ax, 0.16f * S, 0.0f));
+        mArmRoot = glm::rotate(mArmRoot, glm::radians(aBase + aSwing), glm::vec3(1, 0, 0));
+
+        glm::mat4 mUpperArm = glm::translate(mArmRoot, glm::vec3(0.0f, -0.12f * S, 0.0f));
+        mUpperArm = glm::scale(mUpperArm, glm::vec3(0.11f * S, 0.24f * S, 0.11f * S));
+        drawObject(mUpperArm, shirtTex, sp, 0);
+
+        glm::mat4 mForeArm = glm::translate(mArmRoot, glm::vec3(0.0f, -0.30f * S, 0.0f));
+        mForeArm = glm::scale(mForeArm, glm::vec3(0.095f * S, 0.20f * S, 0.095f * S));
+        drawObject(mForeArm, skinTex, sp, 0);
+
+        glm::mat4 mHand = glm::translate(mArmRoot, glm::vec3(0.0f, -0.44f * S, 0.0f));
+        mHand = glm::scale(mHand, glm::vec3(0.10f * S, 0.09f * S, 0.08f * S));
+        drawObject(mHand, skinTex, sp, 0);
+    }
+
+    glm::mat4 mNeck = glm::translate(mTorso, glm::vec3(0.0f, 0.30f * S, 0.0f));
+    mNeck = glm::scale(mNeck, glm::vec3(0.10f * S, 0.10f * S, 0.10f * S));
+    drawObject(mNeck, skinTex, sp, 0);
+
+    glm::mat4 mHeadRoot = glm::translate(mTorso, glm::vec3(0.0f, 0.42f * S, 0.0f));
+
+    glm::mat4 mHead = glm::scale(mHeadRoot, glm::vec3(0.24f * S, 0.26f * S, 0.22f * S));
+    drawObject(mHead, skinTex, sp, 0);
+
+    glm::mat4 mHairTop = glm::translate(mHeadRoot, glm::vec3(0.0f, 0.10f * S, -0.01f * S));
+    mHairTop = glm::scale(mHairTop, glm::vec3(0.25f * S, 0.10f * S, 0.23f * S));
+    drawObject(mHairTop, hairTex, sp, 0);
+
+    glm::mat4 mHairBack = glm::translate(mHeadRoot, glm::vec3(0.0f, 0.04f * S, -0.115f * S));
+    mHairBack = glm::scale(mHairBack, glm::vec3(0.23f * S, 0.20f * S, 0.04f * S));
+    drawObject(mHairBack, hairTex, sp, 0);
+
+    glm::mat4 mHairSL = glm::translate(mHeadRoot, glm::vec3(-0.118f * S, 0.02f * S, -0.02f * S));
+    mHairSL = glm::scale(mHairSL, glm::vec3(0.04f * S, 0.18f * S, 0.18f * S));
+    drawObject(mHairSL, hairTex, sp, 0);
+
+    glm::mat4 mHairSR = glm::translate(mHeadRoot, glm::vec3(0.118f * S, 0.02f * S, -0.02f * S));
+    mHairSR = glm::scale(mHairSR, glm::vec3(0.04f * S, 0.18f * S, 0.18f * S));
+    drawObject(mHairSR, hairTex, sp, 0);
+
+    for (int eye = 0; eye < 2; eye++) {
+        float ex = (eye == 0) ? -0.055f * S : 0.055f * S;
+        glm::mat4 mEyeWhite = glm::translate(mHeadRoot, glm::vec3(ex, 0.04f * S, 0.112f * S));
+        mEyeWhite = glm::scale(mEyeWhite, glm::vec3(0.045f * S, 0.038f * S, 0.012f * S));
+        drawObject(mEyeWhite, texCeiling, sp, 0);
+
+        glm::mat4 mPupil = glm::translate(mHeadRoot, glm::vec3(ex, 0.04f * S, 0.118f * S));
+        mPupil = glm::scale(mPupil, glm::vec3(0.022f * S, 0.022f * S, 0.008f * S));
+        drawObject(mPupil, texBlack, sp, 0);
+    }
+
+    glm::mat4 mBrowL = glm::translate(mHeadRoot, glm::vec3(-0.055f * S, 0.075f * S, 0.113f * S));
+    mBrowL = glm::scale(mBrowL, glm::vec3(0.048f * S, 0.012f * S, 0.008f * S));
+    drawObject(mBrowL, hairTex, sp, 0);
+
+    glm::mat4 mBrowR = glm::translate(mHeadRoot, glm::vec3(0.055f * S, 0.075f * S, 0.113f * S));
+    mBrowR = glm::scale(mBrowR, glm::vec3(0.048f * S, 0.012f * S, 0.008f * S));
+    drawObject(mBrowR, hairTex, sp, 0);
+
+    glm::mat4 mNose = glm::translate(mHeadRoot, glm::vec3(0.0f, 0.01f * S, 0.118f * S));
+    mNose = glm::scale(mNose, glm::vec3(0.022f * S, 0.030f * S, 0.018f * S));
+    drawObject(mNose, skinTex, sp, 0);
+
+    glm::mat4 mMouth = glm::translate(mHeadRoot, glm::vec3(0.0f, -0.038f * S, 0.114f * S));
+    mMouth = glm::scale(mMouth, glm::vec3(0.085f * S, 0.014f * S, 0.010f * S));
+    drawObject(mMouth, texOdraPanel, sp, 0);
+
+    for (int corner = 0; corner < 2; corner++) {
+        float cx = (corner == 0) ? -0.046f * S : 0.046f * S;
+        glm::mat4 mCorner = glm::translate(mHeadRoot, glm::vec3(cx, -0.030f * S, 0.113f * S));
+        mCorner = glm::scale(mCorner, glm::vec3(0.016f * S, 0.016f * S, 0.009f * S));
+        drawObject(mCorner, texOdraPanel, sp, 0);
+    }
+
+    glm::mat4 mEarL = glm::translate(mHeadRoot, glm::vec3(-0.122f * S, 0.01f * S, 0.0f));
+    mEarL = glm::scale(mEarL, glm::vec3(0.020f * S, 0.040f * S, 0.025f * S));
+    drawObject(mEarL, skinTex, sp, 0);
+
+    glm::mat4 mEarR = glm::translate(mHeadRoot, glm::vec3(0.122f * S, 0.01f * S, 0.0f));
+    mEarR = glm::scale(mEarR, glm::vec3(0.020f * S, 0.040f * S, 0.025f * S));
+    drawObject(mEarR, skinTex, sp, 0);
+
+    float hw2 = 0.22f * S;
+    float hd = 0.18f * S;
+    return createBox(pos.x, pos.z, hw2 * 2.0f, hd * 2.0f);
+}
+
 void drawScene(GLFWwindow* window) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    float time = (float)glfwGetTime();
+
+    static int    currentWP = 0;
+    static glm::vec3 currentPos = glm::vec3(-4.0f, 0.0f, -4.0f);
+    static float currentYaw = 180.0f;
+    static float targetYaw1 = 180.0f;
+    static float waitTimer = 4.0f;
+    static bool  isWalking = false;
+    static float lastT = (float)glfwGetTime();
+
+    static std::vector<glm::vec3> waypoints = {
+        glm::vec3(-4.0f, 0.0f, -4.0f),
+        glm::vec3(0.0f,  0.0f, -5.0f),
+        glm::vec3(4.0f,  0.0f, -4.0f),
+        glm::vec3(5.0f,  0.0f,  0.0f),
+        glm::vec3(7.0f,  0.0f,  5.0f),
+        glm::vec3(0.0f,  0.0f,  5.0f),
+        glm::vec3(-4.0f, 0.0f,  4.0f),
+        glm::vec3(-5.0f, 0.0f,  0.0f),
+    };
+
+    float dt = time - lastT;
+    lastT = time;
+
+    if (waitTimer > 0.0f) {
+        waitTimer -= dt;
+        isWalking = false;
+        float lookYaws[] = { 180.0f, 0.0f, 135.0f, 90.0f, -90.0f, 0.0f, -45.0f, -90.0f };
+        targetYaw1 = lookYaws[currentWP];
+    }
+    else {
+        int nextWP = (currentWP + 1) % (int)waypoints.size();
+        glm::vec3 dir = waypoints[nextWP] - currentPos;
+        float dist = glm::length(dir);
+
+        targetYaw1 = glm::degrees(atan2(dir.x, dir.z));
+
+        float yawDiffToWalk = targetYaw1 - currentYaw;
+        while (yawDiffToWalk > 180.0f) yawDiffToWalk -= 360.0f;
+        while (yawDiffToWalk < -180.0f) yawDiffToWalk += 360.0f;
+
+        if (abs(yawDiffToWalk) < 30.0f) {
+            if (dist < 0.1f) {
+                isWalking = false;
+                currentWP = nextWP;
+                currentPos = waypoints[nextWP];
+
+                if (currentWP % 2 == 0) {
+                    waitTimer = 4.0f;
+                }
+                else {
+                    waitTimer = 0.0f;
+                }
+            }
+            else {
+                isWalking = true;
+                dir = glm::normalize(dir);
+                currentPos += dir * 1.4f * dt;
+            }
+        }
+        else {
+            isWalking = false;
+        }
+    }
+
+    float t1YawDiff = targetYaw1 - currentYaw;
+    while (t1YawDiff > 180.0f) t1YawDiff -= 360.0f;
+    while (t1YawDiff < -180.0f) t1YawDiff += 360.0f;
+    currentYaw += t1YawDiff * 5.0f * dt;
+
+    static glm::vec3 t2Pos = glm::vec3(-7.0f, 0.0f, -6.8f);
+    static float t2Yaw = 90.0f;
+    static float t2Wait = 0.0f;
+    static int t2Dir = 1;
+    static bool t2VisitedCenter = false;
+    bool t2Walking = false;
+
+    if (t2Wait > 0.0f) {
+        t2Wait -= dt;
+        t2Walking = false;
+        t2Yaw = 180.0f;
+    }
+    else {
+        t2Walking = true;
+        t2Yaw = (t2Dir == 1) ? 90.0f : -90.0f;
+
+        float move = 1.2f * dt * t2Dir;
+        t2Pos.x += move;
+
+        if (!t2VisitedCenter && ((t2Dir == 1 && t2Pos.x >= -5.0f) || (t2Dir == -1 && t2Pos.x <= -5.0f))) {
+            t2Pos.x = -5.0f;
+            t2VisitedCenter = true;
+            t2Wait = 4.0f;
+        }
+
+        if (t2Pos.x > -3.0f) {
+            t2Pos.x = -3.0f;
+            t2Dir = -1;
+            t2VisitedCenter = false;
+            t2Wait = 3.0f;
+        }
+        else if (t2Pos.x < -7.0f) {
+            t2Pos.x = -7.0f;
+            t2Dir = 1;
+            t2VisitedCenter = false;
+            t2Wait = 3.0f;
+        }
+    }
+
+    glm::vec3 odraPos(7.2f, 0.0f, -5.4f);
+    float odraYaw = 75.0f;
+
+    static float crayAngle = 0.0f;
+    static float crayWait = 0.0f;
+    static float crayTargetYaw = 90.0f;
+    static float crayYaw = 90.0f;
+    static float angleAccumulator = 0.0f;
+    bool crayWalking = false;
+    glm::vec3 crayCenter(-4.5f, 0.0f, 6.5f);
+
+    if (crayWait > 0.0f) {
+        crayWait -= dt;
+        crayWalking = false;
+        crayTargetYaw = glm::degrees(crayAngle) + 180.0f;
+    }
+    else {
+        crayTargetYaw = glm::degrees(crayAngle) + 90.0f;
+
+        float yawDiffToWalk = crayTargetYaw - crayYaw;
+        while (yawDiffToWalk > 180.0f) yawDiffToWalk -= 360.0f;
+        while (yawDiffToWalk < -180.0f) yawDiffToWalk += 360.0f;
+
+        if (abs(yawDiffToWalk) < 30.0f) {
+            crayWalking = true;
+            float moveSpeed = 0.6f * dt;
+            crayAngle += moveSpeed;
+            angleAccumulator += moveSpeed;
+
+            if (angleAccumulator >= 1.5708f) {
+                angleAccumulator -= 1.5708f;
+                crayWait = 4.0f;
+                crayWalking = false;
+            }
+        }
+        else {
+            crayWalking = false;
+        }
+    }
+
+    float crayYawDiff = crayTargetYaw - crayYaw;
+    while (crayYawDiff > 180.0f) crayYawDiff -= 360.0f;
+    while (crayYawDiff < -180.0f) crayYawDiff += 360.0f;
+    crayYaw += crayYawDiff * 5.0f * dt;
+
+    glm::vec3 crayWalker = crayCenter + glm::vec3(sin(crayAngle) * 2.2f, 0.0f, cos(crayAngle) * 2.2f);
+
+    glm::vec3 cmPos(-6.0f, 0.0f, 4.0f);
+    float cmYaw = -90.0f;
+
+    static glm::vec3 t6Pos = glm::vec3(4.0f, 0.0f, 3.6f);
+    static float t6Yaw = 90.0f;
+    static float t6TargetYaw = 90.0f;
+    static float t6Wait = 0.0f;
+    static int t6Dir = -1;
+    static bool t6VisitedCenter = false;
+    bool t6Walking = false;
+
+    if (t6Wait > 0.0f) {
+        t6Wait -= dt;
+        t6Walking = false;
+        t6TargetYaw = 0.0f;
+    }
+    else {
+        t6TargetYaw = (t6Dir == 1) ? 90.0f : -90.0f;
+
+        float yawDiffToWalk = t6TargetYaw - t6Yaw;
+        while (yawDiffToWalk > 180.0f) yawDiffToWalk -= 360.0f;
+        while (yawDiffToWalk < -180.0f) yawDiffToWalk += 360.0f;
+
+        if (abs(yawDiffToWalk) < 30.0f) {
+            t6Walking = true;
+            float move = 1.0f * dt * t6Dir;
+            t6Pos.x += move;
+
+            if (!t6VisitedCenter && ((t6Dir == 1 && t6Pos.x >= 5.0f) || (t6Dir == -1 && t6Pos.x <= 5.0f))) {
+                t6Pos.x = 5.0f;
+                t6VisitedCenter = true;
+                t6Wait = 4.0f;
+            }
+
+            if (t6Pos.x > 6.0f) {
+                t6Pos.x = 6.0f;
+                t6Dir = -1;
+                t6VisitedCenter = false;
+                t6Wait = 4.0f;
+            }
+            else if (t6Pos.x < 4.0f) {
+                t6Pos.x = 4.0f;
+                t6Dir = 1;
+                t6VisitedCenter = false;
+                t6Wait = 4.0f;
+            }
+        }
+    }
+
+    float t6YawDiff = t6TargetYaw - t6Yaw;
+    while (t6YawDiff > 180.0f) t6YawDiff -= 360.0f;
+    while (t6YawDiff < -180.0f) t6YawDiff += 360.0f;
+    t6Yaw += t6YawDiff * 5.0f * dt;
+
+    npcBoxes.clear();
+    const float S = 1.3f;
+    float hw = 0.22f * S;
+    float hd = 0.18f * S;
+
+    npcBoxes.push_back(createBox(odraPos.x, odraPos.z, hw * 2.0f, hd * 2.0f));
+    npcBoxes.push_back(createBox(cmPos.x, cmPos.z, hw * 2.0f, hd * 2.0f));
+
+    npcBoxes.push_back(createBox(currentPos.x, currentPos.z, hw * 2.0f, hd * 2.0f));
+    npcBoxes.push_back(createBox(t2Pos.x, t2Pos.z, hw * 2.0f, hd * 2.0f));
+    npcBoxes.push_back(createBox(crayWalker.x, crayWalker.z, hw * 2.0f, hd * 2.0f));
+    npcBoxes.push_back(createBox(t6Pos.x, t6Pos.z, hw * 2.0f, hd * 2.0f));
 
     glm::vec2 playerPos2D = glm::vec2(cameraPos.x, cameraPos.z);
     float distEniac = glm::distance(playerPos2D, glm::vec2(-6.0f, -6.0f));
     float distOdra = glm::distance(playerPos2D, glm::vec2(5.0f, -5.0f));
 
-    if (distEniac < 4.0f) {
+    if (distEniac < 4.0f)
         glfwSetWindowTitle(window, "Eksponat: ENIAC (1945) | Waga: 27 ton | 18 000 lamp prozniowych");
-    }
-    else if (distOdra < 5.0f) {
+    else if (distOdra < 5.0f)
         glfwSetWindowTitle(window, "Eksponat: ODRA 1305 (1973) | Elwro Wroclaw | RAM: max 256 KB | Legenda PRL");
-    }
-    else {
+    else
         glfwSetWindowTitle(window, "Muzeum Maszyn Cyfrowych");
-    }
 
     currentBrightness += (targetBrightness - currentBrightness) * 0.02f;
 
@@ -1247,13 +1607,11 @@ void drawScene(GLFWwindow* window) {
 
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-
     if (height == 0) height = 1;
     float aspectRatio = (float)width / (float)height;
 
     glm::mat4 P = glm::perspective(glm::radians(50.0f), aspectRatio, 0.1f, 100.0f);
 
-    spLambert->use();
     glUniformMatrix4fv(spLambert->u("P"), 1, false, glm::value_ptr(P));
     glUniformMatrix4fv(spLambert->u("V"), 1, false, glm::value_ptr(V));
 
@@ -1263,7 +1621,6 @@ void drawScene(GLFWwindow* window) {
         glm::vec4(-5.0f, 2.5f,  5.0f, 1.0f),
         glm::vec4(5.0f, 2.5f,  5.0f, 1.0f)
     };
-
     glUniform4fv(spLambert->u("lightPositions"), 4, glm::value_ptr(lightPos[0]));
 
     glm::mat4 mFloor = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)), glm::vec3(20.0f, 0.1f, 20.0f));
@@ -1288,19 +1645,15 @@ void drawScene(GLFWwindow* window) {
 
     glm::mat4 mCrossX = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)), glm::vec3(8.0f, 4.0f, 0.5f));
     drawObject(mCrossX, texBricks, spLambert);
-
     glm::mat4 mCrossZ = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)), glm::vec3(0.5f, 4.0f, 8.0f));
     drawObject(mCrossZ, texBricks, spLambert);
 
     glm::mat4 mDoorX1 = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-8.0f, 2.0f, 0.0f)), glm::vec3(4.0f, 4.0f, 0.5f));
     drawObject(mDoorX1, texBricks, spLambert);
-
     glm::mat4 mDoorX2 = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(8.0f, 2.0f, 0.0f)), glm::vec3(4.0f, 4.0f, 0.5f));
     drawObject(mDoorX2, texBricks, spLambert);
-
     glm::mat4 mDoorZ1 = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, -8.0f)), glm::vec3(0.5f, 4.0f, 4.0f));
     drawObject(mDoorZ1, texBricks, spLambert);
-
     glm::mat4 mDoorZ2 = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 8.0f)), glm::vec3(0.5f, 4.0f, 4.0f));
     drawObject(mDoorZ2, texBricks, spLambert);
 
@@ -1309,6 +1662,13 @@ void drawScene(GLFWwindow* window) {
     drawRetroRoom(glm::vec3(5.0f, 0.0f, 5.0f), 180.0f, spLambert);
     drawConnectionMachine(glm::vec3(-8.0f, 0.0f, 4.0f), 15.0f, spLambert);
     drawCray1(glm::vec3(-4.5f, 0.0f, 6.5f), -45.0f, spLambert);
+
+    drawHuman(currentPos, currentYaw, 1.0f, isWalking, spLambert, 0);
+    drawHuman(t2Pos, t2Yaw, 0.9f, t2Walking, spLambert, 1);
+    drawHuman(odraPos, odraYaw, 0.0f, false, spLambert, 2);
+    drawHuman(crayWalker, crayYaw, 1.0f, crayWalking, spLambert, 3);
+    drawHuman(cmPos, cmYaw, 0.0f, false, spLambert, 4);
+    drawHuman(t6Pos, t6Yaw, 0.8f, t6Walking, spLambert, 1);
 
     glfwSwapBuffers(window);
 }
