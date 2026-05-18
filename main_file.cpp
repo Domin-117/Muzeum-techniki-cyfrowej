@@ -748,7 +748,7 @@ void drawUltimateEniac(glm::vec3 centerPos, ShaderProgram* sp) {
 
     for (int i = 0; i < 4; i++) {
         glm::vec3 pos = glm::vec3(-9.0f, 0.0f, -7.6f + (i * 1.2f));
-        bool isLastInRow = (i == 3);
+        bool isLastInRow = (i == 0);
         drawEniacCabinet(pos, 90.0f, sp, isLastInRow);
     }
 }
@@ -1453,9 +1453,9 @@ void drawScene(GLFWwindow* window) {
     static std::vector<glm::vec3> waypoints = {
         glm::vec3(-4.0f, 0.0f, -4.0f), // Przed ENIAC
         glm::vec3(0.0f,  0.0f, -5.0f), // Drzwi Północne
-        glm::vec3(4.0f,  0.0f, -4.0f), // Przed Odra
+        glm::vec3(4.0f,  0.0f, -4.0f), // Przed Odra 1305
         glm::vec3(5.0f,  0.0f,  0.0f), // Drzwi Wschodnie
-        glm::vec3(7.0f,  0.0f,  5.0f), // Retro Pokój
+        glm::vec3(3.0f,  0.0f,  3.0f), // Retro Pokój (Stoi bardziej z tyłu)
         glm::vec3(0.0f,  0.0f,  5.0f), // Drzwi Południowe
         glm::vec3(-4.0f, 0.0f,  4.0f), // Superkomputery
         glm::vec3(-5.0f, 0.0f,  0.0f), // Drzwi Zachodnie
@@ -1464,7 +1464,7 @@ void drawScene(GLFWwindow* window) {
     if (waitTimer > 0.0f) {
         waitTimer -= dt;
         isWalking = false;
-        float lookYaws[] = { 180.0f, 0.0f, 135.0f, 90.0f, -90.0f, 0.0f, -45.0f, -90.0f };
+        float lookYaws[] = { 180.0f, 0.0f, 135.0f, 90.0f, 45.0f, 0.0f, -45.0f, -90.0f };
         targetYaw1 = lookYaws[currentWP];
     }
     else {
@@ -1534,13 +1534,13 @@ void drawScene(GLFWwindow* window) {
             t2Pos.x = -3.0f;
             t2Dir = -1;
             t2VisitedCenter = false;
-            t2Wait = 3.0f;
+            t2Wait = 4.0f;
         }
         else if (t2Pos.x < -7.0f) {
             t2Pos.x = -7.0f;
             t2Dir = 1;
             t2VisitedCenter = false;
-            t2Wait = 3.0f;
+            t2Wait = 4.0f;
         }
     }
 
