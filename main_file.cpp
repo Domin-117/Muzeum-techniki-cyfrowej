@@ -2,6 +2,11 @@
 #define MINIAUDIO_IMPLEMENTATION
 #define _USE_MATH_DEFINES
 
+// Prevent Windows headers from defining min/max macros that break std::min/std::max and glm::min
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <cmath>
 
 #include <GL/glew.h>
@@ -430,15 +435,52 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
 
     for (int k = 0; k < 12; k++) {
         float startX = -0.35f + ((seed + k) % 9) * 0.085f;
-        float endX = -0.35f + ((seed + k * 3) % 9) * 0.085f;
-        float tangleAngle = (startX - endX) * 15.0f;
-        float ky = 1.25f + ((seed + k * 5) % 6) * 0.08f;
+        float startY = 1.35f + ((seed + k * 5) % 4) * 0.1f;
+        float startZ = 0.44f;
 
-        glm::mat4 mCable = glm::translate(mBase, glm::vec3((startX + endX) / 2.0f, ky, 0.55f));
-        mCable = glm::rotate(mCable, glm::radians(-15.0f + ((k % 3) - 1) * 8.0f), glm::vec3(1, 0, 0));
-        mCable = glm::rotate(mCable, glm::radians(tangleAngle), glm::vec3(0, 0, 1));
-        mCable = glm::scale(mCable, glm::vec3(0.007f, 0.80f + (k % 3) * 0.15f, 0.007f));
-        drawObject(mCable, texBlack, sp, 0);
+        if (startY > 1.7f) startY -= 0.4f;
+
+        if (startX > 0.3f) startX -= 0.2f;
+        if (startX < -0.35f) startX += 0.2f;
+
+        float endX = (seed % 3 == 0) ? -0.35f + ((seed + k * 3) % 4) * 0.07f : -0.35f + ((seed + k * 3) % 8) * 0.08f;
+        float endY = 0.81f;
+        float endZ = 0.64f;
+
+        glm::vec3 p1(startX, startY, startZ);
+        glm::vec3 p2(endX, endY, endZ);
+
+        float sagY = 0.95f;
+        float sagZ = 0.55f;
+        glm::vec3 pMid((startX + endX) / 2.0f, sagY, sagZ);
+
+        glm::mat4 mP1 = glm::translate(mBase, p1 + glm::vec3(0.0f, 0.0f, 0.01f));
+        mP1 = glm::scale(mP1, glm::vec3(0.015f, 0.015f, 0.03f));
+        drawObject(mP1, texDesk, sp, 0);
+
+        glm::mat4 mP2 = glm::translate(mBase, p2 + glm::vec3(0.0f, 0.02f, 0.0f));
+        mP2 = glm::rotate(mP2, glm::radians(90.0f), glm::vec3(1, 0, 0));
+        mP2 = glm::scale(mP2, glm::vec3(0.02f, 0.04f, 0.02f));
+        drawObject(mP2, texDesk, sp, 0);
+
+        glm::vec3 segments[3] = { p1, pMid, p2 };
+        for (int s = 0; s < 2; s++) {
+            glm::vec3 startPos = segments[s];
+            glm::vec3 endPos = segments[s + 1];
+            glm::vec3 d = endPos - startPos;
+            float len = glm::length(d);
+            glm::vec3 c = startPos + d * 0.5f;
+
+            glm::mat4 mSegment = glm::translate(mBase, c);
+            glm::vec3 up(0.0f, 1.0f, 0.0f);
+            glm::vec3 nd = glm::normalize(d);
+            glm::vec3 axis = glm::cross(up, nd);
+            float dotVal = glm::clamp(glm::dot(up, nd), -1.0f, 1.0f);
+            float angle = acos(dotVal);
+            if (glm::length(axis) > 0.001f) mSegment = glm::rotate(mSegment, angle, glm::normalize(axis));
+            mSegment = glm::scale(mSegment, glm::vec3(0.005f, len, 0.005f));
+            drawObject(mSegment, texBlack, sp, 0);
+        }
     }
 
     if (seed % 3 == 0) {
