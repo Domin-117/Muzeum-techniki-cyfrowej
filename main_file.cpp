@@ -413,7 +413,7 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
 
             glm::mat4 mTube = glm::translate(mBase, glm::vec3(lx, ly + 0.055f, 0.44f));
             mTube = glm::scale(mTube, glm::vec3(0.028f, 0.075f, 0.028f));
-            int isGlowing = ((seed + row * 13 + col * 7) % 10 > 2) ? 1 : 0;
+            int isGlowing = ((seed + row * 13 + col * 7) % 10 > 2) ? 2 : 0;
             drawObject(mTube, isGlowing ? texYellow : texGauge, sp, isGlowing);
 
             glm::mat4 mTubeTop = glm::translate(mBase, glm::vec3(lx, ly + 0.100f, 0.44f));
@@ -472,7 +472,7 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
 
     for (int i = 0; i < 4; i++) {
         GLuint sTex = ((seed + i) % 3 == 0) ? texGreen : texRed;
-        int isLit = ((seed + i * 3) % 4 > 1) ? 1 : 0;
+        int isLit = ((seed + i * 3) % 4 > 1) ? 2 : 0;
         glm::mat4 mStatus = glm::translate(mBase, glm::vec3(0.15f + (i * 0.055f), 3.10f, 0.445f));
         mStatus = glm::scale(mStatus, glm::vec3(0.030f, 0.030f, 0.015f));
         drawObject(mStatus, sTex, sp, isLit);
@@ -589,7 +589,7 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
         for (int j = 0; j < 5; j++) {
             glm::mat4 mLed = glm::translate(mBase, glm::vec3(-0.15f + (j * 0.075f), 0.9f, 0.39f));
             mLed = glm::scale(mLed, glm::vec3(0.04f, 0.04f, 0.02f));
-            drawObject(mLed, texRed, sp, 1);
+            drawObject(mLed, texRed, sp, 2);
         }
 
         glm::mat4 mPlate = glm::translate(mBase, glm::vec3(0.0f, 0.5f, 0.36f));
@@ -602,7 +602,7 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
             for (int c = 0; c < 2; c++) {
                 glm::mat4 mBtn = glm::translate(mBase, glm::vec3(-0.15f + (c * 0.08f), 0.95f - (r * 0.08f), 0.36f));
                 mBtn = glm::scale(mBtn, glm::vec3(0.05f, 0.05f, 0.02f));
-                drawObject(mBtn, btnColors[r * 2 + c], sp, 1);
+                drawObject(mBtn, btnColors[r * 2 + c], sp, 2);
             }
         }
         for (int sw = 0; sw < 3; sw++) {
@@ -620,7 +620,7 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
         for (int j = 0; j < 3; j++) {
             glm::mat4 mBar = glm::translate(mBase, glm::vec3(-0.1f + (j * 0.1f), 0.9f, 0.39f));
             mBar = glm::scale(mBar, glm::vec3(0.08f, 0.08f, 0.02f));
-            drawObject(mBar, texGreen, sp, 1);
+            drawObject(mBar, texGreen, sp, 2);
         }
 
         glm::mat4 mPlate = glm::translate(mBase, glm::vec3(0.0f, 0.5f, 0.36f));
@@ -656,7 +656,7 @@ void drawMainframeConsole(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mScreen = glm::translate(mBase, glm::vec3(0.0f, 0.98f, 0.18f));
     mScreen = glm::rotate(mScreen, glm::radians(5.0f), glm::vec3(1, 0, 0));
     mScreen = glm::scale(mScreen, glm::vec3(0.42f, 0.35f, 0.02f));
-    drawObject(mScreen, texGreen, sp, 1);
+    drawObject(mScreen, texGreen, sp, 2);
 
     glm::mat4 mKeybDeck = glm::translate(mBase, glm::vec3(0.0f, 0.74f, 0.28f));
     mKeybDeck = glm::rotate(mKeybDeck, glm::radians(10.0f), glm::vec3(1, 0, 0));
@@ -698,7 +698,7 @@ void drawOdra1305(glm::vec3 centerPos, ShaderProgram* sp) {
         for (int c = 0; c < 2; c++) {
             glm::mat4 mBtn = glm::translate(mCpuBase, glm::vec3(-0.7f + (c * 0.12f), 0.36f - (r * 0.12f), 0.79f));
             mBtn = glm::scale(mBtn, glm::vec3(0.08f, 0.08f, 0.02f));
-            drawObject(mBtn, texRed, sp, 1);
+            drawObject(mBtn, texRed, sp, 2);
         }
     }
 
@@ -808,7 +808,7 @@ void drawCommodore64(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 
     glm::mat4 mScreen = glm::translate(mMonBase, glm::vec3(0.0f, 0.26f, 0.18f));
     mScreen = glm::scale(mScreen, glm::vec3(0.38f, 0.3f, 0.02f));
-    drawObject(mScreen, texC64Screen, sp, 1);
+    drawObject(mScreen, texC64Screen, sp, 2);
 
     glm::mat4 mFloppy = glm::translate(mBase, glm::vec3(0.45f, 0.06f, 0.0f));
     mFloppy = glm::scale(mFloppy, glm::vec3(0.25f, 0.12f, 0.4f));
@@ -818,7 +818,7 @@ void drawCommodore64(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     drawObject(mFloppySlot, texBlack, sp, 0);
     glm::mat4 mFloppyLed = glm::translate(mBase, glm::vec3(0.38f, 0.03f, 0.205f));
     mFloppyLed = glm::scale(mFloppyLed, glm::vec3(0.015f, 0.015f, 0.01f));
-    drawObject(mFloppyLed, texRed, sp, 1);
+    drawObject(mFloppyLed, texRed, sp, 2);
 
     drawClassicJoystick(pos + glm::vec3(0.3f, 0.0f, 0.2f), 15.0f, sp);
 }
@@ -857,7 +857,7 @@ void drawAtari(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 
     glm::mat4 mCartLed = glm::translate(mBase, glm::vec3(0.21f, 0.088f, -0.085f));
     mCartLed = glm::scale(mCartLed, glm::vec3(0.012f, 0.008f, 0.012f));
-    drawObject(mCartLed, texRed, sp, 1);
+    drawObject(mCartLed, texRed, sp, 2);
 
     glm::mat4 mKeyDeck = glm::translate(mBase, glm::vec3(-0.04f, 0.058f, 0.08f));
     mKeyDeck = glm::rotate(mKeyDeck, glm::radians(8.0f), glm::vec3(1, 0, 0));
@@ -899,7 +899,7 @@ void drawAtari(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 
     glm::mat4 mScreen = glm::translate(mMonBase, glm::vec3(0.0f, 0.268f, 0.218f));
     mScreen = glm::scale(mScreen, glm::vec3(0.40f, 0.32f, 0.012f));
-    drawObject(mScreen, texAtariScreen, sp, 1);
+    drawObject(mScreen, texAtariScreen, sp, 2);
 
     glm::mat4 mMonFoot = glm::translate(mMonBase, glm::vec3(0.0f, 0.03f, 0.05f));
     mMonFoot = glm::scale(mMonFoot, glm::vec3(0.30f, 0.06f, 0.20f));
@@ -980,7 +980,7 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                         for (int col = 0; col < 8; col++) {
                             float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f);
                             float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
-                            int isLit = (phase * phase2 > 0.05f) ? 1 : 0;
+                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0; // POPRAWIONE
                             glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
                             mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
                             drawObject(mLed, texRed, sp, isLit);
@@ -997,7 +997,7 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                         for (int col = 0; col < 8; col++) {
                             float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f + 2.0f);
                             float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
-                            int isLit = (phase * phase2 > 0.05f) ? 1 : 0;
+                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0; // POPRAWIONE
                             glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
                             mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
                             drawObject(mLed, texRed, sp, isLit);
@@ -1014,7 +1014,7 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                         for (int col = 0; col < 8; col++) {
                             float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f + 4.0f);
                             float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
-                            int isLit = (phase * phase2 > 0.05f) ? 1 : 0;
+                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0; // POPRAWIONE
                             glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
                             mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
                             drawObject(mLed, texRed, sp, isLit);
@@ -1031,7 +1031,7 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                         for (int col = 0; col < 8; col++) {
                             float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f + 6.0f);
                             float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
-                            int isLit = (phase * phase2 > 0.05f) ? 1 : 0;
+                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0; // POPRAWIONE
                             glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
                             mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
                             drawObject(mLed, texRed, sp, isLit);
@@ -1182,7 +1182,7 @@ void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
             drawObject(mCard, texDesk, sp, 0);
 
             for (int col = 0; col < 2; col++) {
-                int isLit = (sin(time * 1.5f + i * 1.1f + card * 0.6f + col * 2.3f) > 0.4f) ? 1 : 0;
+                int isLit = (sin(time * 1.5f + i * 1.1f + card * 0.6f + col * 2.3f) > 0.4f) ? 2 : 0;
                 GLuint cTex = (col == 0) ? texGreen : texYellow;
                 glm::mat4 mBackChip = glm::translate(mTower, glm::vec3(-0.05f + col * 0.10f, 0.42f + card * 0.30f, 0.128f));
                 mBackChip = glm::scale(mBackChip, glm::vec3(0.05f, 0.08f, 0.005f));
@@ -1191,7 +1191,7 @@ void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
         }
 
         for (int d = 0; d < 4; d++) {
-            int isLit = (sin(time * 1.8f + i * 0.9f + d * 1.5f) > 0.0f) ? 1 : 0;
+            int isLit = (sin(time * 1.8f + i * 0.9f + d * 1.5f) > 0.0f) ? 2 : 0;
             GLuint ledTex = (d % 3 == 0) ? texGreen : texRed;
             glm::mat4 mLed = glm::translate(mTower, glm::vec3(-0.10f + d * 0.068f, 2.20f, 0.126f));
             mLed = glm::scale(mLed, glm::vec3(0.030f, 0.018f, 0.006f));
@@ -1199,14 +1199,14 @@ void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
         }
 
         for (int d = 0; d < 4; d++) {
-            int isLit = (sin(time * 2.3f - i * 0.7f + d * 1.1f + 1.0f) > 0.15f) ? 1 : 0;
+            int isLit = (sin(time * 2.3f - i * 0.7f + d * 1.1f + 1.0f) > 0.15f) ? 2 : 0;
             glm::mat4 mLed = glm::translate(mTower, glm::vec3(-0.10f + d * 0.068f, 0.26f, 0.126f));
             mLed = glm::scale(mLed, glm::vec3(0.030f, 0.018f, 0.006f));
             drawObject(mLed, texYellow, sp, isLit);
         }
 
         for (int d = 0; d < 5; d++) {
-            int isLit = (sin(time * 2.6f + i * 1.2f + d * 0.9f + 0.5f) > 0.1f) ? 1 : 0;
+            int isLit = (sin(time * 2.6f + i * 1.2f + d * 0.9f + 0.5f) > 0.1f) ? 2 : 0;
             GLuint dTex = (d % 3 == 0) ? texGreen : ((d % 3 == 1) ? texRed : texYellow);
             glm::mat4 mDin = glm::translate(mTower, glm::vec3(-0.08f + d * 0.04f, 2.10f, 0.126f));
             mDin = glm::scale(mDin, glm::vec3(0.018f, 0.018f, 0.006f));
@@ -1696,10 +1696,10 @@ void drawScene(GLFWwindow* window) {
     glUniformMatrix4fv(spLambert->u("V"), 1, false, glm::value_ptr(V));
 
     glm::vec4 lightPos[4] = {
-        glm::vec4(-5.0f, 2.5f, -5.0f, 1.0f),
-        glm::vec4(5.0f, 2.5f, -5.0f, 1.0f),
-        glm::vec4(-5.0f, 2.5f,  5.0f, 1.0f),
-        glm::vec4(5.0f, 2.5f,  5.0f, 1.0f)
+        glm::vec4(-5.0f, 3.8f, -5.0f, 1.0f), // Pokój z ENIAC
+        glm::vec4(5.0f, 3.8f, -5.0f, 1.0f), // Pokój z Odra 1305
+        glm::vec4(-5.0f, 3.8f,  5.0f, 1.0f), // Pokój Superkomputerów (Cray/CM)
+        glm::vec4(5.0f, 3.8f,  5.0f, 1.0f)  // Pokój Retro
     };
     glUniform4fv(spLambert->u("lightPositions"), 4, glm::value_ptr(lightPos[0]));
 
