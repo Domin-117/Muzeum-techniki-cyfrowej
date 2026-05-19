@@ -11,28 +11,30 @@ uniform mat4 M;
 out vec4 iNormal;
 out vec4 iFragPos;
 out vec2 iTexCoord;
+out vec3 iViewPosVec; // ZMIANA: przesyłamy wektor bez normalizacji
+out float iHeight;   
 
 void main(void) {
-    gl_Position = P * V * M * vertex;
-    iFragPos = M * vertex;
-    
-    // Obliczamy normalną w przestrzeni świata
+    vec4 worldPos = M * vertex;
+    gl_Position = P * V * worldPos;
+    iFragPos = worldPos;
+
     mat3 normalMatrix = transpose(inverse(mat3(M)));
     vec3 worldNormal = normalize(normalMatrix * normal.xyz);
     iNormal = vec4(worldNormal, 0.0);
-    
-    // --- NIEZAWODNY BOX MAPPING ---
-    // Używamy pozycji wierzchołka w świecie (iFragPos) zamiast texCoord
-    // Dzięki temu tekstura zawsze pasuje do wymiarów ściany w metrach!
-    
+
+    // Pozycja kamery i nieskalibrowany wektor w stronę kamery
+    vec3 camPos = vec3(inverse(V)[3]);
+    iViewPosVec = camPos - worldPos.xyz;
+
+    iHeight = worldPos.y;
+
+    // Box mapping
     if (abs(worldNormal.y) > 0.5) {
-        // Podłoga / Sufit (płaszczyzna XZ)
-        iTexCoord = iFragPos.xz;
+        iTexCoord = iFragPos.xz * 0.5;
     } else if (abs(worldNormal.x) > 0.5) {
-        // Ściany boczne patrzace w boki (płaszczyzna ZY)
-        iTexCoord = iFragPos.zy;
+        iTexCoord = iFragPos.zy * 0.5;
     } else {
-        // Ściany patrzace przód/tył (płaszczyzna XY)
-        iTexCoord = iFragPos.xy;
+        iTexCoord = iFragPos.xy * 0.5;
     }
 }
