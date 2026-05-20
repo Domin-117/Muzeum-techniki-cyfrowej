@@ -2,7 +2,6 @@
 #define MINIAUDIO_IMPLEMENTATION
 #define _USE_MATH_DEFINES
 
-// Prevent Windows headers from defining min/max macros that break std::min/std::max and glm::min
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -434,52 +433,67 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
     }
 
     for (int k = 0; k < 12; k++) {
-        float startX = -0.35f + ((seed + k) % 9) * 0.085f;
-        float startY = 1.35f + ((seed + k * 5) % 4) * 0.1f;
-        float startZ = 0.44f;
+        int knobRow = ((seed + k * 5) % 3);
+        int knobCol = ((seed + k * 11) % 10);
+        float startX = -0.40f + knobCol * 0.088f;
+        float startY = 1.08f + knobRow * 0.16f;
+        float startZ = 0.46f;
 
-        if (startY > 1.7f) startY -= 0.4f;
-
-        if (startX > 0.3f) startX -= 0.2f;
-        if (startX < -0.35f) startX += 0.2f;
-
-        float endX = (seed % 3 == 0) ? -0.35f + ((seed + k * 3) % 4) * 0.07f : -0.35f + ((seed + k * 3) % 8) * 0.08f;
-        float endY = 0.81f;
-        float endZ = 0.64f;
+        float endX = -0.38f + ((seed + k * 7) % 9) * 0.095f;
+        float endY = 0.875f;
+        float endZ = 0.65f;
 
         glm::vec3 p1(startX, startY, startZ);
         glm::vec3 p2(endX, endY, endZ);
 
-        float sagY = 0.95f;
-        float sagZ = 0.55f;
-        glm::vec3 pMid((startX + endX) / 2.0f, sagY, sagZ);
+        float ctrlY = glm::max(endY + 0.05f, (startY + endY) * 0.5f - 0.05f);
+        float ctrlZ = startZ + (endZ - startZ) * 0.3f;
+        glm::vec3 ctrl(
+            (startX + endX) * 0.5f + ((seed + k) % 3 - 1) * 0.06f,
+            ctrlY,
+            ctrlZ
+        );
 
-        glm::mat4 mP1 = glm::translate(mBase, p1 + glm::vec3(0.0f, 0.0f, 0.01f));
-        mP1 = glm::scale(mP1, glm::vec3(0.015f, 0.015f, 0.03f));
-        drawObject(mP1, texDesk, sp, 0);
+        glm::mat4 mPlug = glm::translate(mBase, p1 + glm::vec3(0.0f, 0.0f, 0.018f));
+        mPlug = glm::scale(mPlug, glm::vec3(0.016f, 0.012f, 0.022f));
+        drawObject(mPlug, texDesk, sp, 0);
 
-        glm::mat4 mP2 = glm::translate(mBase, p2 + glm::vec3(0.0f, 0.02f, 0.0f));
-        mP2 = glm::rotate(mP2, glm::radians(90.0f), glm::vec3(1, 0, 0));
-        mP2 = glm::scale(mP2, glm::vec3(0.02f, 0.04f, 0.02f));
-        drawObject(mP2, texDesk, sp, 0);
+        glm::mat4 mPlug2 = glm::translate(mBase, p2 + glm::vec3(0.0f, 0.008f, 0.0f));
+        mPlug2 = glm::rotate(mPlug2, glm::radians(90.0f), glm::vec3(1, 0, 0));
+        mPlug2 = glm::scale(mPlug2, glm::vec3(0.016f, 0.022f, 0.012f));
+        drawObject(mPlug2, texDesk, sp, 0);
 
-        glm::vec3 segments[3] = { p1, pMid, p2 };
-        for (int s = 0; s < 2; s++) {
-            glm::vec3 startPos = segments[s];
-            glm::vec3 endPos = segments[s + 1];
-            glm::vec3 d = endPos - startPos;
+        const int segs = 7;
+        glm::vec3 prev = p1;
+        for (int s = 1; s <= segs; s++) {
+            float t = (float)s / segs;
+            float mt = 1.0f - t;
+
+            glm::vec3 cur = mt * mt * p1 + 2.0f * mt * t * ctrl + t * t * p2;
+
+            cur.y = glm::max(cur.y, endY + 0.005f);
+
+            glm::vec3 d = cur - prev;
             float len = glm::length(d);
-            glm::vec3 c = startPos + d * 0.5f;
+            if (len < 0.001f) { prev = cur; continue; }
 
-            glm::mat4 mSegment = glm::translate(mBase, c);
-            glm::vec3 up(0.0f, 1.0f, 0.0f);
+            glm::vec3 center = (prev + cur) * 0.5f;
             glm::vec3 nd = glm::normalize(d);
+            glm::vec3 up(0.0f, 1.0f, 0.0f);
             glm::vec3 axis = glm::cross(up, nd);
             float dotVal = glm::clamp(glm::dot(up, nd), -1.0f, 1.0f);
             float angle = acos(dotVal);
-            if (glm::length(axis) > 0.001f) mSegment = glm::rotate(mSegment, angle, glm::normalize(axis));
-            mSegment = glm::scale(mSegment, glm::vec3(0.005f, len, 0.005f));
-            drawObject(mSegment, texBlack, sp, 0);
+
+            GLuint wireTex = ((seed + k) % 3 == 0) ? texRed :
+                ((seed + k) % 3 == 1) ? texBlack : texDesk;
+
+            glm::mat4 mSeg = glm::translate(mBase, center);
+            if (glm::length(axis) > 0.001f)
+                mSeg = glm::rotate(mSeg, angle, glm::normalize(axis));
+            mSeg = glm::scale(mSeg, glm::vec3(0.006f, len, 0.006f));
+            drawObject(mSeg, wireTex, sp, 0);
+
+            prev = cur;
         }
     }
 
@@ -1022,7 +1036,7 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                         for (int col = 0; col < 8; col++) {
                             float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f);
                             float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
-                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0; // POPRAWIONE
+                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0;
                             glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
                             mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
                             drawObject(mLed, texRed, sp, isLit);
@@ -1039,7 +1053,7 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                         for (int col = 0; col < 8; col++) {
                             float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f + 2.0f);
                             float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
-                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0; // POPRAWIONE
+                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0;
                             glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
                             mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
                             drawObject(mLed, texRed, sp, isLit);
@@ -1056,7 +1070,7 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                         for (int col = 0; col < 8; col++) {
                             float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f + 4.0f);
                             float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
-                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0; // POPRAWIONE
+                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0;
                             glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
                             mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
                             drawObject(mLed, texRed, sp, isLit);
@@ -1073,7 +1087,7 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
                         for (int col = 0; col < 8; col++) {
                             float phase = sin(time * 3.5f + row * 0.5f + col * 0.5f + ix * 1.1f + iy * 0.9f + iz * 1.3f + 6.0f);
                             float phase2 = sin(time * 2.1f - row * 0.4f + col * 0.6f);
-                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0; // POPRAWIONE
+                            int isLit = (phase * phase2 > 0.05f) ? 2 : 0;
                             glm::mat4 mLed = glm::translate(mFace, glm::vec3(-0.28f + col * 0.08f, -0.28f + row * 0.08f, 0.012f));
                             mLed = glm::scale(mLed, glm::vec3(0.033f, 0.033f, 0.005f));
                             drawObject(mLed, texRed, sp, isLit);
@@ -1299,6 +1313,47 @@ void drawLightSwitch(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBtn = glm::rotate(mBtnBase, glm::radians(switchAngle), glm::vec3(1, 0, 0));
     mBtn = glm::scale(mBtn, glm::vec3(0.06f, 0.08f, 0.015f));
     drawObject(mBtn, texDesk, sp, 0);
+}
+
+void drawCamera(glm::vec3 pos, float baseRotY, ShaderProgram* sp) {
+    float time = (float)glfwGetTime();
+    float swing = sin(time * 0.8f + baseRotY * 0.05f) * 20.0f;
+    float rotY = baseRotY + swing;
+
+    glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
+
+    glm::mat4 mMount = glm::translate(mBase, glm::vec3(0.0f, -0.12f, 0.0f));
+    mMount = glm::scale(mMount, glm::vec3(0.06f, 0.24f, 0.06f));
+    drawObject(mMount, texBlack, sp, 0);
+
+    glm::mat4 mPivot = glm::translate(mBase, glm::vec3(0.0f, -0.26f, 0.0f));
+    mPivot = glm::rotate(mPivot, glm::radians(rotY), glm::vec3(0, 1, 0));
+
+    glm::mat4 mBall = glm::scale(mPivot, glm::vec3(0.08f, 0.08f, 0.08f));
+    drawObject(mBall, texDesk, sp, 0);
+
+    glm::mat4 mBody = glm::translate(mPivot, glm::vec3(0.0f, -0.04f, 0.06f));
+    mBody = glm::scale(mBody, glm::vec3(0.14f, 0.10f, 0.18f));
+    drawObject(mBody, texBlack, sp, 0);
+
+    glm::mat4 mLens = glm::translate(mPivot, glm::vec3(0.0f, -0.04f, 0.16f));
+    mLens = glm::rotate(mLens, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mLens = glm::scale(mLens, glm::vec3(0.05f, 0.06f, 0.05f));
+    drawCylinder(mLens, texBlack, sp, 0);
+
+    glm::mat4 mGlass = glm::translate(mPivot, glm::vec3(0.0f, -0.04f, 0.195f));
+    mGlass = glm::rotate(mGlass, glm::radians(90.0f), glm::vec3(1, 0, 0));
+    mGlass = glm::scale(mGlass, glm::vec3(0.032f, 0.008f, 0.032f));
+    drawCylinder(mGlass, texEniacBody, sp, 0);
+
+    int ledOn = (sin(time * 2.0f + baseRotY) > 0.6f) ? 2 : 0;
+    glm::mat4 mLed = glm::translate(mPivot, glm::vec3(0.05f, -0.005f, 0.155f));
+    mLed = glm::scale(mLed, glm::vec3(0.018f, 0.018f, 0.010f));
+    drawObject(mLed, texRed, sp, ledOn);
+
+    glm::mat4 mCable = glm::translate(mBase, glm::vec3(0.0f, -0.06f, 0.0f));
+    mCable = glm::scale(mCable, glm::vec3(0.012f, 0.12f, 0.012f));
+    drawObject(mCable, texBlack, sp, 0);
 }
 
 void drawBench(glm::vec3 pos, float rotY, ShaderProgram* sp) {
@@ -1685,7 +1740,7 @@ void drawScene(GLFWwindow* window) {
 
     glm::vec3 odraPos(7.2f, 0.0f, -5.4f);
     float odraYaw = 75.0f;
-    glm::vec3 cmPos(-6.0f, 0.0f, 4.0f);
+    glm::vec3 cmPos(-6.0f, 0.0f, 3.5f);
     float cmYaw = -90.0f;
     glm::vec3 benchPos(0.6f, 0.0f, -2.0f);
 
@@ -1802,6 +1857,11 @@ void drawScene(GLFWwindow* window) {
 
     drawHuman(benchPos + glm::vec3(0.0f, 0.0f, -0.6f), 90.0f, 0.0f, false, spLambert, 1, true);
     drawHuman(benchPos + glm::vec3(0.0f, 0.0f, 0.6f), 110.0f, 0.0f, false, spLambert, 3, true);
+
+    drawCamera(glm::vec3(-0.38f, 3.95f, -0.38f), 225.0f, spLambert);
+    drawCamera(glm::vec3(0.38f, 3.95f, -0.38f), 135.0f, spLambert);
+    drawCamera(glm::vec3(-0.38f, 3.95f, 0.38f), 315.0f, spLambert);
+    drawCamera(glm::vec3(0.38f, 3.95f, 0.38f), 45.0f, spLambert);
 
     glfwSwapBuffers(window);
 }
