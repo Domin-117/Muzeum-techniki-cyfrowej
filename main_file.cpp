@@ -2020,17 +2020,38 @@ void drawScene(GLFWwindow* window) {
     npcBoxes.push_back(createBox(crayWalker.x, crayWalker.z, hw * 2.0f, hd * 2.0f));
     npcBoxes.push_back(createBox(t6Pos.x, t6Pos.z, hw * 2.0f, hd * 2.0f));
 
-    // Dynamiczna zmiana tytułu okna w zależności od tego, obok której instalacji stoi gracz
+    // Dynamiczna zmiana tytułu okna (Opisy eksponatów)\
+
+    // Pobieramy pozycję gracza w 2D (osie X i Z, ignorujemy wysokość Y)
     glm::vec2 playerPos2D = glm::vec2(cameraPos.x, cameraPos.z);
+
+    // Obliczamy odległość gracza od środków poszczególnych ekspozycji
     float distEniac = glm::distance(playerPos2D, glm::vec2(-6.0f, -6.0f));
     float distOdra = glm::distance(playerPos2D, glm::vec2(5.0f, -5.0f));
+    float distRetro = glm::distance(playerPos2D, glm::vec2(5.0f, 5.0f));
+    float distCray = glm::distance(playerPos2D, glm::vec2(-4.5f, 6.5f));
+    float distCM = glm::distance(playerPos2D, glm::vec2(-8.0f, 4.0f));
 
-    if (distEniac < 4.0f)
-        glfwSetWindowTitle(window, "Eksponat: ENIAC (1945) | Waga: 27 ton | 18 000 lamp prozniowych");
-    else if (distOdra < 5.0f)
-        glfwSetWindowTitle(window, "Eksponat: ODRA 1305 (1973) | Elwro Wroclaw | RAM: max 256 KB | Legenda PRL");
-    else
+    // Wyświetlanie opisu w tytule okna, jeśli gracz podejdzie wystarczająco blisko
+    if (distEniac < 4.0f) {
+        glfwSetWindowTitle(window, "Eksponat: ENIAC (1945) | Waga: 27 ton | 18 000 lamp prozniowych | Pierwszy komputer ogolnego przeznaczenia");
+    }
+    else if (distOdra < 5.0f) {
+        glfwSetWindowTitle(window, "Eksponat: ODRA 1305 (1973) | Elwro Wroclaw | RAM: max 256 KB | Legenda polskiej informatyki");
+    }
+    else if (distRetro < 4.0f) {
+        glfwSetWindowTitle(window, "Strefa Retro: Commodore 64 (1982) & Atari 800XL (1983) | 8-bitowa rewolucja w domach");
+    }
+    else if (distCray < 3.0f) {
+        glfwSetWindowTitle(window, "Eksponat: CRAY-1 (1975) | Superkomputer wektorowy | 160 MFLOPS | Freonowe chlodzenie w siedzisku");
+    }
+    else if (distCM < 3.0f) {
+        glfwSetWindowTitle(window, "Eksponat: Connection Machine (1985) | Przetwarzanie masowo rownolegle | 65 536 mikroprocesorow");
+    }
+    else {
+        // Domyślny tytuł, gdy gracz jest na środku korytarza lub daleko od eksponatów
         glfwSetWindowTitle(window, "Muzeum Maszyn Cyfrowych");
+    }
 
     // Zmienne środowiskowe wysyłane do shadera: Jasność świateł
     currentBrightness += (targetBrightness - currentBrightness) * 0.02f;
