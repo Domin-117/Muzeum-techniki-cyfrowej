@@ -21,10 +21,26 @@
   <ItemGroup>
     <ClInclude Include="allmodels.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="gui\imconfig.h" />
+    <ClInclude Include="gui\imgui.h" />
+    <ClInclude Include="gui\imgui_impl_glfw.h" />
+    <ClInclude Include="gui\imgui_impl_opengl3.h" />
+    <ClInclude Include="gui\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="gui\imgui_internal.h" />
+    <ClInclude Include="gui\imstb_rectpack.h" />
+    <ClInclude Include="gui\imstb_textedit.h" />
+    <ClInclude Include="gui\imstb_truetype.h" />
     <ClInclude Include="lodepng.h" />
     <ClInclude Include="shaderprogram.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="gui\imgui.cpp" />
+    <ClCompile Include="gui\imgui_demo.cpp" />
+    <ClCompile Include="gui\imgui_draw.cpp" />
+    <ClCompile Include="gui\imgui_impl_glfw.cpp" />
+    <ClCompile Include="gui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="gui\imgui_tables.cpp" />
+    <ClCompile Include="gui\imgui_widgets.cpp" />
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main_file.cpp" />
     <ClCompile Include="shaderprogram.cpp" />

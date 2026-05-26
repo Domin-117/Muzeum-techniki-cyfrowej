@@ -1,10 +1,9 @@
 /**
  * @file main_file.cpp
  * @brief Główny plik aplikacji "Muzeum Maszyn Cyfrowych".
- *
- * Aplikacja wykorzystuje biblioteki OpenGL (GLEW, GLFW), GLM do matematyki 3D,
- * LodePNG do ładowania tekstur, Miniaudio do obsługi wejścia mikrofonowego
- * oraz Vosk do rozpoznawania mowy offline (sterowanie oświetleniem za pomocą głosu).
+ * @details Aplikacja renderuje wirtualne muzeum przy użyciu OpenGL (GLEW, GLFW).
+ * Wykorzystuje GLM do operacji matematycznych 3D, LodePNG do tekstur, Miniaudio i Vosk
+ * do rozpoznawania mowy (sterowanie oświetleniem) oraz Dear ImGui do interfejsu 2D.
  */
 
 #define GLM_FORCE_RADIANS
@@ -16,7 +15,6 @@
 #endif
 
 #include <cmath>
-
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -25,36 +23,76 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
+#include <thread>
+#include <atomic>
+
 #include "constants.h"
 #include "lodepng.h"
 #include "shaderprogram.h"
 #include "miniaudio.h"
 #include "vosk_api.h"
-#pragma comment(lib, "winmm.lib")
-#include <thread>
-#include <atomic>
 #include "cylinder.h"
+#include "gui/imgui.h"
+#include "gui/imgui_impl_glfw.h"
+#include "gui/imgui_impl_opengl3.h"
 
- /// Globalny obiekt siatki cylindra
+#pragma comment(lib, "winmm.lib")
+
+ /// Globalny obiekt siatki cylindra.
 Cylinder cylinderMesh;
 
-/// Docelowa jasność oświetlenia (zmieniana głosem lub klawiszem)
+/// Docelowa jasność oświetlenia (zmieniana głosem lub klawiszem).
 std::atomic<float> targetBrightness(1.0f);
-/// Aktualna, płynnie interpolowana jasność oświetlenia
+
+/// Aktualna, płynnie interpolowana jasność oświetlenia.
 float currentBrightness = 1.0f;
 
-/// Model rozpoznawania mowy Vosk
+/// Wskaźnik na model rozpoznawania mowy biblioteki Vosk.
 VoskModel* g_model;
-/// Rozpoznawacz mowy Vosk
+
+/// Wskaźnik na rozpoznawacz mowy biblioteki Vosk.
 VoskRecognizer* g_recognizer;
+
+/// Zmienna przechowująca indeks aktualnie oglądanego eksponatu (-1 jeśli gracz jest za daleko).
+int activeExhibit = -1;
+
+/**
+ * @brief Struktura reprezentująca eksponat w muzeum.
+ * Zawiera informacje o jego położeniu oraz dane tekstowe dla interfejsu graficznego.
+ */
+struct Exhibit {
+    glm::vec2 pos2D;       ///< Pozycja eksponatu w przestrzeni 2D (osie X i Z).
+    float radius;          ///< Promień strefy detekcji (jak blisko musi podejść gracz).
+    const char* name;      ///< Nazwa eksponatu.
+    const char* year;      ///< Rok produkcji/powstania.
+    const char* specs[5];  ///< Tablica do 5 specyfikacji technicznych lub ciekawostek.
+    int specCount;         ///< Faktyczna liczba użytych specyfikacji.
+};
+
+/// Baza danych wszystkich eksponatów dostępnych w muzeum.
+std::vector<Exhibit> exhibits = {
+    { glm::vec2(-6.0f, -6.0f), 4.0f, "ENIAC", "1945",
+      {"Waga: 27 ton", "18 000 lamp prozniowych", "Moc: 150 kW",
+       "Predkosc: 5 000 operacji/sek", "Pierwszy komputer ogolnego przeznaczenia"}, 5 },
+    { glm::vec2(5.0f, -5.0f), 5.0f, "ODRA 1305", "1973",
+      {"Producent: Elwro Wroclaw", "RAM: max 256 KB", "Jezyk: Fortran / Cobol",
+       "Cena: ok. 4 mln zlotych", "Legenda polskiej informatyki"}, 5 },
+    { glm::vec2(5.0f, 5.0f), 4.0f, "Strefa Retro", "1982 / 1983",
+      {"Commodore 64: 64 KB RAM", "Atari 800XL: 64 KB RAM",
+       "Procesor: MOS 6502 / 6510", "8-bitowa rewolucja domowa", "Sprzedano lacznie 30 mln sztuk"}, 5 },
+    { glm::vec2(-4.5f, 6.5f), 3.0f, "CRAY-1", "1975",
+      {"Moc obliczeniowa: 160 MFLOPS", "RAM: 8 MB", "Waga: 5.5 tony",
+       "Chlodzenie freonowe w siedzisku", "Superkomputer wektorowy"}, 5 },
+    { glm::vec2(-8.0f, 4.0f), 3.0f, "Connection Machine CM-2", "1987",
+      {"65 536 mikroprocesorow", "Architektura SIMD", "Moc: 65 536 MFLOPS",
+       "Produkowany przez Thinking Machines", "Przetwarzanie masowo rownolegle"}, 5 },
+};
 
 /**
  * @brief Callback wywoływany przez bibliotekę Miniaudio, gdy dostępne są dane z mikrofonu.
- *
- * Funkcja przekazuje próbki dźwięku do biblioteki Vosk, która rozpoznaje komendy
- * ("jasno", "ciemno", "normalnie") i odpowiednio ustawia docelową jasność oświetlenia.
- *
- * @param pDevice Wskaźnik na urządzenie audio.
+ * @details Przekazuje próbki dźwięku do biblioteki Vosk, która rozpoznaje komendy
+ * ("jasno", "ciemno", "normalnie") i odpowiednio modyfikuje docelową jasność oświetlenia.
+ * * @param pDevice Wskaźnik na urządzenie audio.
  * @param pOutput Bufor wyjściowy (nieużywany przy nagrywaniu).
  * @param pInput Bufor wejściowy zawierający próbki audio.
  * @param frameCount Liczba ramek audio w buforze.
@@ -80,7 +118,7 @@ void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
 
 /**
  * @brief Callback wywoływany przy zmianie rozmiaru okna GLFW.
- * @param window Wskaźnik na okno.
+ * * @param window Wskaźnik na okno.
  * @param width Nowa szerokość okna.
  * @param height Nowa wysokość okna.
  */
@@ -88,17 +126,50 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-// Parametry kamery (gracza)
-glm::vec3 cameraPos = glm::vec3(-3.0f, 1.5f, -3.0f); ///< Pozycja kamery
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f); ///< Wektor kierunku patrzenia
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f); ///< Wektor "w górę" kamery
-float yaw = -90.0f, pitch = 0.0f; ///< Kąty obrotu kamery (poziom i pion)
+// --- PARAMETRY KAMERY I STEROWANIA ---
+glm::vec3 cameraPos = glm::vec3(-3.0f, 1.5f, -3.0f); ///< Pozycja kamery w przestrzeni świata.
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f); ///< Znormalizowany wektor kierunku patrzenia.
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f); ///< Wektor "w górę" określający orientację kamery.
 
-// Uchwyty tekstur
+float yaw = -90.0f;   ///< Kąt obrotu kamery w poziomie (oś Y).
+float pitch = 0.0f;   ///< Kąt obrotu kamery w pionie (oś X).
+float lastX = 400.0f; ///< Poprzednia pozycja kursora X na ekranie.
+float lastY = 300.0f; ///< Poprzednia pozycja kursora Y na ekranie.
+bool firstMouse = true; ///< Flaga zabezpieczająca przed gwałtownym skokiem kamery przy pierwszym ruchu.
+
+/**
+ * @brief Callback obsługujący ruch myszki, aktualizujący orientację kamery.
+ * * @param window Wskaźnik na okno GLFW.
+ * @param xpos Aktualna pozycja kursora na osi X.
+ * @param ypos Aktualna pozycja kursora na osi Y.
+ */
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (firstMouse) {
+        lastX = (float)xpos;
+        lastY = (float)ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = (float)xpos - lastX;
+    float yoffset = lastY - (float)ypos; // Odwrócone, bo oś Y rośnie w dół
+    lastX = (float)xpos;
+    lastY = (float)ypos;
+
+    float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    // Zabezpieczenie przed zjawiskiem Gimbal Lock
+    if (pitch > 89.0f) pitch = 89.0f;
+    if (pitch < -89.0f) pitch = -89.0f;
+}
+
+// --- UCHWYTY ZASOBÓW OPENGL ---
 GLuint texWall, texFloor, texCeiling, texLamp, texEniacBody, texBricks, texEniac, texRed, texBlack, texCard, texDesk, texGreen, texGauge, texBlue, texYellow, texOdraFrame, texOdraPanel;
 GLuint texWood, texC64Beige, texAtariBeige, texDarkKeys, texC64Screen, texAtariScreen;
-
-// Obiekty OpenGL dla podstawowego sześcianu
 GLuint cubeVAO, cubeVBO;
 
 /**
@@ -109,55 +180,47 @@ struct AABB {
 };
 
 /**
- * @brief Funkcja pomocnicza tworząca obszar kolizji (AABB).
- *
- * @param cx Współrzędna X środka obszaru.
+ * @brief Konstruuje obszar kolizji AABB na podstawie podanego środka i wymiarów.
+ * * @param cx Współrzędna X środka obszaru.
  * @param cz Współrzędna Z środka obszaru.
- * @param width Szerokość obszaru (oś X).
- * @param depth Głębokość obszaru (oś Z).
+ * @param width Szerokość obszaru (rozmiar wzdłuż osi X).
+ * @param depth Głębokość obszaru (rozmiar wzdłuż osi Z).
  * @return Gotowa struktura AABB.
  */
 AABB createBox(float cx, float cz, float width, float depth) {
     return { cx - width / 2.0f, cx + width / 2.0f, cz - depth / 2.0f, cz + depth / 2.0f };
 }
 
-/// Wektor przechowujący fizyczne obszary kolizji dla ścian budynków/pomieszczeń
+/// Statyczna mapa obszarów kolizji reprezentująca ściany budynku muzeum.
 std::vector<AABB> walls = {
     createBox(0.0f, -10.0f, 20.0f, 0.5f),
     createBox(0.0f,  10.0f, 20.0f, 0.5f),
     createBox(-10.0f,  0.0f,  0.5f, 20.0f),
     createBox(10.0f,  0.0f,  0.5f, 20.0f),
-
     createBox(0.0f, 0.0f, 8.0f, 0.5f),
     createBox(0.0f, 0.0f, 0.5f, 8.0f),
-
     createBox(-8.0f,  0.0f, 4.0f, 0.5f),
     createBox(8.0f,  0.0f, 4.0f, 0.5f),
     createBox(0.0f, -8.0f, 0.5f, 4.0f),
     createBox(0.0f,  8.0f, 0.5f, 4.0f),
-
     createBox(-5.8f, -8.8f, 7.2f, 1.3f),
     createBox(-8.8f, -5.8f, 1.3f, 4.8f),
-
     createBox(5.0f, -8.0f, 2.8f, 1.8f),
     createBox(8.5f, -5.3f, 1.2f, 4.0f),
     createBox(5.0f, -5.0f, 1.8f, 1.2f),
-
     createBox(5.0f, 5.0f, 2.6f, 1.4f),
-
     createBox(-8.0f, 4.0f, 1.8f, 1.8f),
     createBox(-4.5f, 6.5f, 2.4f, 1.4f),
     createBox(-4.5f, 6.5f, 1.4f, 2.4f)
 };
 
-/// Wektor przechowujący obszary kolizji postaci NPC generowanych dynamicznie
+/// Dynamiczna mapa obszarów kolizji aktualizowana co klatkę, zawierająca pozycje postaci NPC.
 std::vector<AABB> npcBoxes;
 
 /**
- * @brief Sprawdza, czy w podanej pozycji występuje kolizja ze środowiskiem lub postaciami NPC.
- *
- * @param pos Sprawdzana pozycja w przestrzeni 3D.
- * @return true jeśli występuje kolizja, false w przeciwnym razie.
+ * @brief Sprawdza, czy punkt o zadanych współrzędnych znajduje się wewnątrz jakiegokolwiek obszaru kolizji.
+ * * @param pos Sprawdzana pozycja w przestrzeni 3D.
+ * @return true jeśli występuje kolizja ze ścianą lub NPC, false w przeciwnym razie.
  */
 bool checkCollision(glm::vec3 pos) {
     float playerRadius = 0.2f;
@@ -177,7 +240,7 @@ bool checkCollision(glm::vec3 pos) {
     return false;
 }
 
-/// Wierzchołki, normalne i koordynaty tekstur dla standardowego sześcianu (Cube)
+/// Tablica wierzchołków definiująca podstawowy, oteksturowany model 3D sześcianu.
 float cubeVertices[] = {
     // Współrzędne (3)   Normalne (3)    Tekstura (2)
     -0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,   0.0f, 0.0f,
@@ -224,26 +287,25 @@ float cubeVertices[] = {
 };
 
 /**
- * @brief Struktura reprezentująca interaktywny włącznik światła w muzeum.
+ * @brief Struktura reprezentująca interaktywny włącznik światła w wirtualnym środowisku.
  */
 struct LightSwitch {
-    glm::vec3 pos; ///< Pozycja włącznika w świecie
-    float rotY;    ///< Obrót wokół osi Y (dopasowanie do ściany)
+    glm::vec3 pos; ///< Pozycja włącznika w świecie 3D.
+    float rotY;    ///< Obrót wokół osi Y (niezbędne do poprawnego przylegania do ściany).
 };
 
-/// Lista włączników światła na poziomie
+/// Lista zdefiniowanych włączników oświetlenia w muzeum.
 std::vector<LightSwitch> lightSwitches = {
-    { glm::vec3(-0.26f, 1.3f, -2.0f), -90.0f }, // Ściana od strony ENIAC
-    { glm::vec3(2.0f, 1.3f, -0.26f), 180.0f },  // Ściana od strony ODRA
-    { glm::vec3(0.26f, 1.3f, 2.0f), 90.0f },    // Ściana od strony pokoju Retro
-    { glm::vec3(-2.0f, 1.3f, 0.26f), 0.0f }     // Ściana od strony maszyn Cray/CM
+    { glm::vec3(-0.26f, 1.3f, -2.0f), -90.0f }, // Ściana przy ekspozycji ENIAC
+    { glm::vec3(2.0f, 1.3f, -0.26f), 180.0f },  // Ściana przy instalacji ODRA
+    { glm::vec3(0.26f, 1.3f, 2.0f), 90.0f },    // Ściana przy pokoju Retro
+    { glm::vec3(-2.0f, 1.3f, 0.26f), 0.0f }     // Ściana przy maszynach Cray/CM
 };
 
 /**
  * @brief Ładuje teksturę z pliku graficznego PNG.
- *
- * @param filename Ścieżka do pliku obrazu.
- * @return Identyfikator wygenerowanej tekstury OpenGL.
+ * * @param filename Ścieżka do pliku obrazu.
+ * @return Wewnętrzny identyfikator wygenerowanej tekstury OpenGL (GLuint).
  */
 GLuint readTexture(const char* filename) {
     std::vector<unsigned char> image;
@@ -264,12 +326,12 @@ GLuint readTexture(const char* filename) {
 }
 
 /**
- * @brief Generuje jednokolorową teksturę 1x1 piksel.
- *
- * @param r Wartość koloru czerwonego (0-255).
- * @param g Wartość koloru zielonego (0-255).
- * @param b Wartość koloru niebieskiego (0-255).
- * @return Identyfikator tekstury OpenGL.
+ * @brief Generuje jednokolorową, jednolitą teksturę proceduralną o wymiarach 1x1 piksel.
+ * Wykorzystywane powszechnie do kolorowania modeli bez używania osobnych plików graficznych.
+ * * @param r Wartość składowej czerwonej (0-255).
+ * @param g Wartość składowej zielonej (0-255).
+ * @param b Wartość składowej niebieskiej (0-255).
+ * @return Identyfikator wygenerowanej tekstury OpenGL.
  */
 GLuint createSolidColorTexture(unsigned char r, unsigned char g, unsigned char b) {
     GLuint tex;
@@ -283,30 +345,30 @@ GLuint createSolidColorTexture(unsigned char r, unsigned char g, unsigned char b
 }
 
 /**
- * @brief Callback błędów biblioteki GLFW.
- *
- * @param error Kod błędu.
- * @param description Opis błędu.
+ * @brief Główny callback błędów dla biblioteki GLFW.
+ * * @param error Kod błędu.
+ * @param description Tekstowy opis zaistniałego błędu.
  */
 void error_callback(int error, const char* description) {
     fputs(description, stderr);
 }
 
 /**
- * @brief Callback obsługujący jednorazowe akcje klawiatury (wciśnięcia klawiszy).
- *
- * @param window Wskaźnik okna GLFW.
- * @param key Kod klawisza.
- * @param scancode Zeskanowany kod klawisza zależny od platformy.
- * @param action Akcja wykonana na klawiszu (GLFW_PRESS, GLFW_RELEASE).
- * @param mod Modyfikatory (Shift, Ctrl itp.).
+ * @brief Callback obsługujący punktowe, jednorazowe interakcje z klawiaturą (wciśnięcia/puszczenia klawiszy).
+ * Różni się od funkcji processInput tym, że rejestruje tylko stan momentalny, niezbędny do interakcji
+ * (np. użycie przełącznika klawiszem 'E', lub wyjście 'ESC').
+ * * @param window Wskaźnik głównego okna programu.
+ * @param key Wciśnięty kod klawisza.
+ * @param scancode Sprzętowy kod skanowania klawisza.
+ * @param action Akcja (np. GLFW_PRESS, GLFW_RELEASE).
+ * @param mod Zastosowane modyfikatory (Shift, Ctrl, Alt).
  */
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
 
-    // Interakcja ze środowiskiem (np. włączniki światła)
+    // Obsługa interakcji z włącznikami światła
     if (key == GLFW_KEY_E && action == GLFW_PRESS) {
         bool nearSwitch = false;
         for (const auto& sw : lightSwitches) {
@@ -318,25 +380,24 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
         if (nearSwitch) {
             if (targetBrightness > 0.5f) {
-                targetBrightness = 0.2f; // Zgaś światło
+                targetBrightness = 0.2f; // Przejście do stanu zgaszonego
             }
             else {
-                targetBrightness = 1.0f; // Zapal światło
+                targetBrightness = 1.0f; // Przejście do stanu zapalonego
             }
         }
     }
 }
 
 /**
- * @brief Przetwarza ciągłe wciskanie klawiszy (np. poruszanie się WSAD i obracanie kamery strzałkami).
- * Aktualizuje pozycję gracza uwzględniając kolizje ze środowiskiem.
- *
- * @param window Wskaźnik na okno GLFW.
+ * @brief Przetwarza wejście klawiatury dla stanów ciągłych (np. ruch gracza, fizyka).
+ * @details Funkcja wywoływana co klatkę. Sprawdza wciśnięcia klawiszy W, S, A, D i modyfikuje pozycję
+ * kamery po uwzględnieniu systemu detekcji kolizji. Osobne testy dla osi X i Z umożliwiają "ślizganie"
+ * się wzdłuż ścian bez całkowitego zatrzymywania bohatera.
+ * * @param window Wskaźnik na okno aplikacji.
  */
 void processInput(GLFWwindow* window) {
     float speed = 0.05f;
-    float rotSpeed = 1.5f;
-
     glm::vec3 targetDirection = glm::vec3(0.0f);
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) targetDirection += cameraFront;
@@ -346,34 +407,24 @@ void processInput(GLFWwindow* window) {
 
     glm::vec3 movement = targetDirection * speed;
 
-    // Detekcja kolizji niezależnie dla osi X i Z
+    // Detekcja kolizji niezależnie dla osi X
     glm::vec3 testPosX = glm::vec3(cameraPos.x + movement.x, cameraPos.y, cameraPos.z);
     if (!checkCollision(testPosX)) {
         cameraPos.x += movement.x;
     }
 
+    // Detekcja kolizji niezależnie dla osi Z
     glm::vec3 testPosZ = glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z + movement.z);
     if (!checkCollision(testPosZ)) {
         cameraPos.z += movement.z;
     }
 
-    cameraPos.y = 1.5f;
-
-    // Obrót kamery
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)  yaw -= rotSpeed;
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) yaw += rotSpeed;
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)    pitch += rotSpeed;
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)  pitch -= rotSpeed;
-
-    // Zabezpieczenie przed zjawiskiem Gimbal Lock
-    if (pitch > 89.0f)  pitch = 89.0f;
-    if (pitch < -89.0f) pitch = -89.0f;
+    cameraPos.y = 1.5f; // Utrzymanie zablokowanej stałej wysokości kamery ("oczu" gracza)
 }
 
 /**
- * @brief Inicjalizuje stan maszyny stanów OpenGL, shadery, obiekty VAO/VBO i tekstury.
- *
- * @param window Wskaźnik na okno GLFW.
+ * @brief Konfiguruje i inicjalizuje główny stan maszyny OpenGL, VAO/VBO, shadery oraz wgrywa niezbędne zasoby do pamięci VRAM.
+ * * @param window Wskaźnik docelowego okna GLFW.
  */
 void initOpenGLProgram(GLFWwindow* window) {
     initShaders();
@@ -388,15 +439,17 @@ void initOpenGLProgram(GLFWwindow* window) {
     glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
 
-    // Atrybuty wierzchołków
+    // Bindowanie atrybutów: Współrzędne werteksów (layout 0)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    // Bindowanie atrybutów: Wektory normalne dla oświetlenia (layout 1)
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    // Bindowanie atrybutów: Koordynaty UV tekstury (layout 2)
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
-    // Tworzenie i ładowanie tekstur
+    // Proceduralne i fizyczne tekstury dla budynków i eksponatów
     texWall = createSolidColorTexture(75, 95, 120);
     texFloor = createSolidColorTexture(80, 80, 85);
     texEniacBody = createSolidColorTexture(35, 38, 35);
@@ -424,9 +477,8 @@ void initOpenGLProgram(GLFWwindow* window) {
 }
 
 /**
- * @brief Zwalnia zaalokowane zasoby graficzne przed zamknięciem aplikacji.
- *
- * @param window Wskaźnik okna GLFW.
+ * @brief Funkcja wywoływana przed wyłączeniem programu. Niszczy bufory i zwalnia zasoby na karcie graficznej.
+ * * @param window Wskaźnik do usuwanego okna GLFW.
  */
 void freeOpenGLProgram(GLFWwindow* window) {
     freeShaders();
@@ -436,12 +488,11 @@ void freeOpenGLProgram(GLFWwindow* window) {
 }
 
 /**
- * @brief Rysuje obiekt w kształcie cylindra z przypisaną teksturą.
- *
- * @param M Macierz modelu przekształcająca obiekt w przestrzeni świata.
- * @param tex Identyfikator tekstury.
- * @param sp Wskaźnik do aktualnie aktywnego programu cieniującego.
- * @param isLamp Wartość flagująca materiał świecący (1 - oświetlenie, 2 - emiter świetlny, 0 - zwykły materiał).
+ * @brief Rysuje i nakłada tekstury na obiekt w kształcie walca/cylindra.
+ * * @param M Pełna macierz transformacji modelu (Przesunięcie * Obrót * Skalowanie).
+ * @param tex Odniesienie do zbindowanej tekstury.
+ * @param sp Wskaźnik używanego zestawu shaderów.
+ * @param isLamp Kod typu zachowania materiału względem światła (0 - przyjmuje cień, 1/2 - źródło/emisja).
  */
 void drawCylinder(glm::mat4 M, GLuint tex, ShaderProgram* sp, int isLamp = 0) {
     glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
@@ -453,12 +504,11 @@ void drawCylinder(glm::mat4 M, GLuint tex, ShaderProgram* sp, int isLamp = 0) {
 }
 
 /**
- * @brief Rysuje podstawowy sześcian.
- *
- * @param M Macierz modelu.
- * @param tex Identyfikator tekstury.
- * @param sp Wskaźnik do aktywnego programu cieniującego.
- * @param isLamp Flaga emisji światła materiału.
+ * @brief Główna funkcja wykonująca rysowanie prostopadłościanów stanowiących większość geometrii w programie.
+ * * @param M Macierz transformacji modelu określająca finalną pozycję obiektu.
+ * @param tex Uchwyt nadawanej tekstury.
+ * @param sp Wykorzystywany zintegrowany program cieniujący.
+ * @param isLamp Flaga trybu emisji.
  */
 void drawObject(glm::mat4 M, GLuint tex, ShaderProgram* sp, int isLamp = 0) {
     glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
@@ -473,15 +523,13 @@ void drawObject(glm::mat4 M, GLuint tex, ShaderProgram* sp, int isLamp = 0) {
 }
 
 /**
- * @brief Generuje proceduralnie i rysuje jeden segment maszyny liczącej ENIAC.
- *
- * Funkcja używa wariacji opartych na pozycji segmentu w świecie (`seed`),
- * aby unikalnie rozmieścić i pokolorować kable, lampy elektronowe, przełączniki i gniazda.
- *
- * @param pos Pozycja centrum szafy.
- * @param rotY Obrót wokół osi Y.
- * @param sp Program cieniujący.
- * @param isLast Flaga decydująca, czy szafa jest ostatnią w rzędzie (nie rysuje wtedy bocznych złącz do następnej).
+ * @brief Konstruuje szafę (segment) amerykańskiego superkomputera ENIAC.
+ * @details Używa zmiennej numerycznej `seed` zależnej od fizycznej pozycji w świecie do
+ * wariacyjnego rozmieszczenia poszczególnych komponentów elektroniki (rurek elektronowych, przewodów, styków).
+ * * @param pos Środkowy punkt umieszczenia segmentu szafy.
+ * @param rotY Ustawienie obrotu wokół osi Y.
+ * @param sp Program cieniujący do narysowania geometrii.
+ * @param isLast Ustawia flagę ograniczającą rysowanie grubych kabli łączących jeżeli segment jest ostatnim w klastrze.
  */
 void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast = false) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
@@ -575,7 +623,7 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
         }
     }
 
-    // Generator zwisających, połączonych kabli (wykorzystanie krzywej Beziera)
+    // Generator zwisających, połączonych kabli (wykorzystanie algorytmu krzywych Beziera)
     for (int k = 0; k < 12; k++) {
         int knobRow = ((seed + k * 5) % 3);
         int knobCol = ((seed + k * 11) % 10);
@@ -692,12 +740,11 @@ void drawEniacCabinet(glm::vec3 pos, float rotY, ShaderProgram* sp, bool isLast 
 }
 
 /**
- * @brief Animuje i rysuje napęd taśmowy używany m.in. w Odra 1305.
- *
- * @param pos Pozycja w świecie.
- * @param rotY Rotacja Y.
- * @param sp Wskaźnik do programu cieniującego.
- * @param index Indeks służący do wariacji w animacji taśmy i wariantów paneli.
+ * @brief Animuje i renderuje wizualizację napędów na dyski/taśmy magnetyczne do maszyny Odra 1305.
+ * * @param pos Wektor pozycjonujący.
+ * @param rotY Obrót własny napędu.
+ * @param sp Wskaźnik instancji ShaderProgram do rysowania figur.
+ * @param index Identyfikator napędu w tablicy (potrzebny do generowania różnic faz szpul z taśmą).
  */
 void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
@@ -789,6 +836,7 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
         drawObject(mMarker, texDesk, sp, 0);
     }
 
+    // Dynamicznie wybiera z trzech wariantów przycisków / interfejsu
     if (index == 0) {
         glm::mat4 mSubPanel = glm::translate(mBase, glm::vec3(0.0f, 0.9f, 0.36f));
         mSubPanel = glm::scale(mSubPanel, glm::vec3(0.5f, 0.15f, 0.05f));
@@ -838,11 +886,10 @@ void drawTapeDrive(glm::vec3 pos, float rotY, ShaderProgram* sp, int index) {
 }
 
 /**
- * @brief Rysuje terminal/konsolę komputera typu Mainframe (część komputera Odra).
- *
- * @param pos Pozycja w świecie.
- * @param rotY Obrót modelu wokół osi Y.
- * @param sp Program cieniujący.
+ * @brief Odwzorowuje geometrycznie terminal wideo zintegrowany z maszyną Mainframe.
+ * * @param pos Środek biurka konsoli.
+ * @param rotY Obrót całego modelu wzdłuż osi Y.
+ * @param sp Wskaźnik ładujący bieżący układ cieniowania.
  */
 void drawMainframeConsole(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
@@ -898,13 +945,9 @@ void drawMainframeConsole(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Konstruuje całą instalację polskiego komputera ODRA 1305.
- *
- * Komputer składa się z szafy centralnej (CPU), 3 napędów taśmowych
- * oraz konsoli operatora z monitorem i klawiaturą, które są połączone listwami uziemiającymi.
- *
- * @param centerPos Centrum umiejscowienia ekspozycji.
- * @param sp Wskaźnik do programu cieniującego.
+ * @brief Rysuje i konstruuje kompletny zestaw instalacji ODRA 1305 (Szafa CPU, napędy taśmowe i konsolę).
+ * * @param centerPos Ogólny wektor centralny, wokół którego układane są poszczególne elementy peryferyjne.
+ * @param sp Wskaźnik do wykorzystywanego programu cieniującego.
  */
 void drawOdra1305(glm::vec3 centerPos, ShaderProgram* sp) {
     glm::mat4 mCpuBase = glm::translate(glm::mat4(1.0f), centerPos + glm::vec3(0.0f, 1.0f, -3.0f));
@@ -943,7 +986,7 @@ void drawOdra1305(glm::vec3 centerPos, ShaderProgram* sp) {
 
     drawMainframeConsole(centerPos + glm::vec3(0.0f, 0.0f, 0.0f), 0.0f, sp);
 
-    // Kable łączące komponenty z jednostką główną
+    // Listwy maskujące uziemienie
     glm::mat4 mCable1 = glm::translate(glm::mat4(1.0f), centerPos + glm::vec3(0.0f, 0.05f, -1.65f));
     mCable1 = glm::scale(mCable1, glm::vec3(0.15f, 0.1f, 2.7f));
     drawObject(mCable1, texBlack, sp, 0);
@@ -963,9 +1006,8 @@ void drawOdra1305(glm::vec3 centerPos, ShaderProgram* sp) {
 
 /**
  * @brief Rysuje w muzeum wielką instalację komputera ENIAC składającą się z wielu modułów w kształcie litery L.
- *
- * @param centerPos Środek przestrzeni ekspozycji ENIAC-a.
- * @param sp Program cieniujący.
+ * * @param centerPos Środek przestrzeni ekspozycji maszyny ENIAC.
+ * @param sp Wskaźnik programu cieniującego.
  */
 void drawUltimateEniac(glm::vec3 centerPos, ShaderProgram* sp) {
     glm::mat4 mCorner = glm::translate(glm::mat4(1.0f), glm::vec3(-8.775f, 1.75f, -8.775f));
@@ -986,11 +1028,10 @@ void drawUltimateEniac(glm::vec3 centerPos, ShaderProgram* sp) {
 }
 
 /**
- * @brief Rysuje klasyczny joystick (używany np. do domowych komputerów z lat 80.).
- *
- * @param pos Pozycja obiektu.
- * @param rotY Obrót bazy joysticka.
- * @param sp Wskaźnik programu cieniującego.
+ * @brief Generuje niskopoligonowy model tradycyjnego "drążka lotniczego" - Joysticka epoki Atari.
+ * * @param pos Bazowa pozycja geometryczna.
+ * @param rotY Obrót podkładki urządzenia w stopniach.
+ * @param sp Program cieniujący do użycia.
  */
 void drawClassicJoystick(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
@@ -1011,11 +1052,10 @@ void drawClassicJoystick(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Rysuje legendarny mikrokomputer Commodore 64 wraz z monitorem i stacją dysków.
- *
- * @param pos Centrum układu.
- * @param rotY Obrót bryły komputera.
- * @param sp Wskaźnik programu cieniującego.
+ * @brief Renderuje stację Commodore 64 - komputer z wbudowaną klawiaturą, stację dyskietek i monitor.
+ * * @param pos Centrum układu biurkowego.
+ * @param rotY Obrót zestawu dla realizmu.
+ * @param sp Aktualnie używany shader.
  */
 void drawCommodore64(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
@@ -1070,9 +1110,8 @@ void drawCommodore64(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Rysuje klasyczny mikrokomputer Atari (np. seria 800XL/130XE).
- *
- * @param pos Pozycja centrum obudowy.
+ * @brief Rysuje obiekt klasycznego mikrokomputera z serii Atari 8-bit.
+ * * @param pos Płaska pozycja centrum w świecie.
  * @param rotY Obrót obiektu.
  * @param sp Wskaźnik programu cieniującego.
  */
@@ -1181,11 +1220,10 @@ void drawAtari(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Rysuje całe stanowisko pokoju retro (biurko z mikrokomputerami z epoki 8-bitów).
- *
- * @param centerPos Środek biurka.
- * @param rotY Orientacja biurka.
- * @param sp Wskaźnik do programu cieniującego.
+ * @brief Rysuje kompletne środowisko ekspozycji "Pokój Retro", zawierające biurko oraz ulokowane na nim domowe komputery 8-bitowe.
+ * * @param centerPos Globalny środek pokoju.
+ * @param rotY Obrót obiektu meblowego i stojącej na nim aparatury.
+ * @param sp Wskaźnik do aktualnie włączonego programu GLSL.
  */
 void drawRetroRoom(glm::vec3 centerPos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), centerPos);
@@ -1211,12 +1249,11 @@ void drawRetroRoom(glm::vec3 centerPos, float rotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Animuje i rysuje bryłę reprezentującą Connection Machine (kostkowy superkomputer).
- * Używa procedur rysowania dynamicznie zmieniających się diod na panelach przednich.
- *
- * @param pos Środek modelu.
+ * @brief Animuje model potężnego, opartego o formę kostki superkomputera "Connection Machine".
+ * @details Moduł ten posiada setki animowanych punktów świetlnych symulujących pracę maszyny poprzez generatory faz.
+ * * @param pos Środek sześcianu.
  * @param rotY Obrót obiektu.
- * @param sp Program cieniujący.
+ * @param sp Program cieniujący używany do renderowania obudowy i diod.
  */
 void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
@@ -1382,11 +1419,10 @@ void drawConnectionMachine(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Rysuje legendarny superkomputer wektorowy Cray-1, charakterystyczny ze względu na kształt walca z wcięciem (siedzeniem).
- *
- * @param pos Środkowa pozycja cylindra kolumn komputera.
- * @param rotY Obrót obiektu Cray-1.
- * @param sp Wskaźnik programu cieniującego.
+ * @brief Rysuje w muzeum legendarny superkomputer wektorowy Cray-1 (charakterystyczny walec z ławeczką z chłodzeniem).
+ * * @param pos Środkowa pozycja cylindrycznej kolumny głównej maszyny.
+ * @param rotY Obrót obiektu w osi Y.
+ * @param sp Wskaźnik do wybranego, zbindowanego programu GLSL.
  */
 void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
@@ -1516,12 +1552,11 @@ void drawCray1(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Rysuje pojedynczy naścienny włącznik światła.
- * Pozycja dźwigni włącznika zależy od zmiennej określającej aktualne natężenie światła.
- *
- * @param pos Współrzędne (środka) włącznika.
- * @param rotY Kąt pochylenia względem ściany.
- * @param sp Wskaźnik programu cieniującego.
+ * @brief Rysuje naścienny, interaktywny włącznik światła.
+ * Dźwignia animuje się w górę lub w dół, na podstawie fizycznego natężenia aktualnego oświetlenia.
+ * * @param pos Punkt montażowy na ścianie.
+ * @param rotY Obrót dopasowujący do wybranej ściany (0, 90, 180 lub -90 stopni).
+ * @param sp Wskaźnik do aktualnie włączonego programu GLSL.
  */
 void drawLightSwitch(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
@@ -1543,10 +1578,9 @@ void drawLightSwitch(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Rysuje animowaną kamerę na suficie podwieszoną na kulowym przegubie (CCTV).
- *
- * @param pos Centralna pozycja punktu mocowania.
- * @param baseRotY Bazowy kąt obrotu kamery.
+ * @brief Rysuje animowaną proceduralnie kamerę przemysłową (CCTV) z elementami szkła oraz świecącą diodą kontrolną.
+ * * @param pos Punkt przymocowania u sufitu.
+ * @param baseRotY Spoczynkowy obrót celowania kamery.
  * @param sp Parametr programu cieniującego.
  */
 void drawCamera(glm::vec3 pos, float baseRotY, ShaderProgram* sp) {
@@ -1591,11 +1625,10 @@ void drawCamera(glm::vec3 pos, float baseRotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Rysuje parkową ławkę wewnętrzną, na której mogą "siedzieć" postacie NPC.
- *
- * @param pos Środek ławki.
- * @param rotY Rotacja pionowa ławki.
- * @param sp Wskaźnik programu cieniującego.
+ * @brief Rysuje fizyczny obiekt parkowej, drewniano-metalowej ławki pod ścianą muzeum.
+ * * @param pos Centralny środek desek siedliskowych.
+ * @param rotY Obrót pionowy ustalający ułożenie (najczęściej przylega wzdłuż ściany).
+ * @param sp Wskaźnik odwołujący się do zadanego programu GLSL.
  */
 void drawBench(glm::vec3 pos, float rotY, ShaderProgram* sp) {
     glm::mat4 mBase = glm::translate(glm::mat4(1.0f), pos);
@@ -1617,17 +1650,17 @@ void drawBench(glm::vec3 pos, float rotY, ShaderProgram* sp) {
 }
 
 /**
- * @brief Rysuje proceduralny model człowieka (NPC) i obsługuje jego proste animacje poruszania się/stania.
- * Zwraca utworzoną strefę kolizji postaci.
- *
- * @param pos Pozycja centrum postaci.
- * @param faceYaw Kierunek w którym postać aktualnie patrzy.
- * @param speed Szybkość poruszania się przekładająca się na animację kończyn postaci.
- * @param walking Flaga decydująca, czy postać powinna poruszać kończynami.
- * @param sp Odniesienie do instancji programu cieniującego.
- * @param variant Wybór ubrań postaci NPC.
- * @param sitting Zmienna wyzwalająca animację pozy siedzącej postaci.
- * @return Struct AABB reprezentująca boks kolizyjny wokół wymodelowanego NPC.
+ * @brief Rysuje w pełni modelowaną siatkę parametryczną człowieka wykorzystywanego w roli niezależnego NPC.
+ * @details Funkcja zintegrowana ma proste odtwarzanie animacji (chodzenie vs pozycja statyczna vs siedzenie na ławce).
+ * Przebudowuje również wewnętrzne tablice boksów kolizji dla wygenerowanej postury, aby gracz przez niego nie przenikał.
+ * * @param pos Miejsce na podłodze, od którego budowana jest hierarchia pozycjonowania ludzika.
+ * @param faceYaw Określa ostateczny kierunek obrotu w przestrzeni w jakim patrzy aktualnie dany NPC.
+ * @param speed Pływająca zmienna modulująca fizyczną szybkość kroku odzwierciedlaną animacją kończyn i tułowia.
+ * @param walking Flaga logiczna wyzwalająca procedurę rozciągającą sinusoidy animacji kroku na kąty zgięć kości.
+ * @param sp Wskaźnik shadera nakładającego odpowiednie kolory lub pliki na elementy składowe (koszula/skóra/włosy).
+ * @param variant Ustalony numeryczny identyfikator koloru tekstury ubioru pozwalający oddzielić typy ludzików.
+ * @param sitting Zabezpieczenie nakazujące zmianę szkieletu spoczynkowego z pozycji wertykalnej na wygięcie nóg.
+ * @return Struct AABB Pudełko opisujące kolizje postaci niezbędne do wypełnienia globalnej tablicy kolizji otoczenia.
  */
 AABB drawHuman(glm::vec3 pos, float faceYaw, float speed, bool walking, ShaderProgram* sp, int variant = 0, bool sitting = false) {
     float time = (float)glfwGetTime();
@@ -1787,10 +1820,11 @@ AABB drawHuman(glm::vec3 pos, float faceYaw, float speed, bool walking, ShaderPr
 }
 
 /**
- * @brief Główna funkcja rysująca scenę renderowania zawartości muzeum.
- * Pętla aktualizuje ruch NPC, renderuje pokoje i dynamicznie dostosowuje oświetlenie i tytuł okna bazując na odległości.
- *
- * @param window Okno renderowania GLFW.
+ * @brief Główna funkcja dokonująca kompozycji (renderowania) klatki.
+ * @details Konfiguruje macierze kamery, przelicza trajektorię autonomicznych NPC przebywających w muzeum,
+ * renderuje bryłę budynku, a następnie wstawia eksponaty (w tym te z elementami fizycznie ruchomymi/świecącymi).
+ * Na koniec analizuje ustawienie kamery w poszukiwaniu najbliższego oglądanego obiektu.
+ * * @param window Główny wskaźnik okna renderującego GLFW przekazywany dla ustalenia proporcji klatki.
  */
 void drawScene(GLFWwindow* window) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1800,20 +1834,21 @@ void drawScene(GLFWwindow* window) {
     float dt = time - lastT;
     lastT = time;
 
-    static int    currentWP = 0;
+    // --- LOGIKA AI PRZEWODNIKA ---
+    static int currentWP = 0;
     static glm::vec3 currentPos = glm::vec3(-4.0f, 0.0f, -4.0f);
     static float currentYaw = 180.0f;
     static float targetYaw1 = 180.0f;
     static float waitTimer = 4.0f;
     static bool  isWalking = false;
 
-    // Punkty orientacyjne poruszającego się przewodnika NPC
+    // Trasa patrolowa wyznaczona węzłami wektorowymi
     static std::vector<glm::vec3> waypoints = {
         glm::vec3(-4.0f, 0.0f, -4.0f), // Przed ENIAC
         glm::vec3(0.0f,  0.0f, -5.0f), // Drzwi Północne
         glm::vec3(4.0f,  0.0f, -4.0f), // Przed Odra 1305
         glm::vec3(5.0f,  0.0f,  0.0f), // Drzwi Wschodnie
-        glm::vec3(3.0f,  0.0f,  3.0f), // Retro Pokój (Stoi bardziej z tyłu)
+        glm::vec3(3.0f,  0.0f,  3.0f), // Retro Pokój
         glm::vec3(0.0f,  0.0f,  5.0f), // Drzwi Południowe
         glm::vec3(-4.0f, 0.0f,  4.0f), // Superkomputery
         glm::vec3(-5.0f, 0.0f,  0.0f), // Drzwi Zachodnie
@@ -1862,7 +1897,7 @@ void drawScene(GLFWwindow* window) {
     currentYaw += t1YawDiff * 5.0f * dt;
 
 
-    // Logika patrolującego odwiedzającego przy ENIAC-u
+    // --- AI PRZECHODNIA: ENIAC ---
     static glm::vec3 t2Pos = glm::vec3(-7.0f, 0.0f, -6.8f);
     static float t2Yaw = 90.0f;
     static float t2Wait = 0.0f;
@@ -1903,7 +1938,7 @@ void drawScene(GLFWwindow* window) {
     }
 
 
-    // Logika odwiedzającego przy maszynie Cray
+    // --- AI PRZECHODNIA: MASZYNA CRAY ---
     static float crayAngle = 0.0f;
     static float crayWait = 0.0f;
     static float crayTargetYaw = 90.0f;
@@ -1948,7 +1983,7 @@ void drawScene(GLFWwindow* window) {
     glm::vec3 crayWalker = crayCenter + glm::vec3(sin(crayAngle) * 2.2f, 0.0f, cos(crayAngle) * 2.2f);
 
 
-    // Logika NPC poruszającego się w Retro Room
+    // --- AI PRZECHODNIA: POKÓJ RETRO ---
     static glm::vec3 t6Pos = glm::vec3(4.0f, 0.0f, 3.6f);
     static float t6Yaw = 90.0f;
     static float t6TargetYaw = 90.0f;
@@ -1999,7 +2034,7 @@ void drawScene(GLFWwindow* window) {
     while (t6YawDiff < -180.0f) t6YawDiff += 360.0f;
     t6Yaw += t6YawDiff * 5.0f * dt;
 
-    // Pozycje statycznych i animowanych postaci / stacji dysków dla detekcji kolizji
+    // Przesłanie skrzynek detekcyjnych do wektora kolizji
     glm::vec3 odraPos(7.2f, 0.0f, -5.4f);
     float odraYaw = 75.0f;
     glm::vec3 cmPos(-6.0f, 0.0f, 3.5f);
@@ -2020,40 +2055,41 @@ void drawScene(GLFWwindow* window) {
     npcBoxes.push_back(createBox(crayWalker.x, crayWalker.z, hw * 2.0f, hd * 2.0f));
     npcBoxes.push_back(createBox(t6Pos.x, t6Pos.z, hw * 2.0f, hd * 2.0f));
 
-    // Dynamiczna zmiana tytułu okna (Opisy eksponatów)\
-
-    // Pobieramy pozycję gracza w 2D (osie X i Z, ignorujemy wysokość Y)
+    // --- LOGIKA AKTYWOWANIA OPISÓW Z SYSTEMEM WZROKU (DOT PRODUCT) ---
     glm::vec2 playerPos2D = glm::vec2(cameraPos.x, cameraPos.z);
 
-    // Obliczamy odległość gracza od środków poszczególnych ekspozycji
-    float distEniac = glm::distance(playerPos2D, glm::vec2(-6.0f, -6.0f));
-    float distOdra = glm::distance(playerPos2D, glm::vec2(5.0f, -5.0f));
-    float distRetro = glm::distance(playerPos2D, glm::vec2(5.0f, 5.0f));
-    float distCray = glm::distance(playerPos2D, glm::vec2(-4.5f, 6.5f));
-    float distCM = glm::distance(playerPos2D, glm::vec2(-8.0f, 4.0f));
-
-    // Wyświetlanie opisu w tytule okna, jeśli gracz podejdzie wystarczająco blisko
-    if (distEniac < 4.0f) {
-        glfwSetWindowTitle(window, "Eksponat: ENIAC (1945) | Waga: 27 ton | 18 000 lamp prozniowych | Pierwszy komputer ogolnego przeznaczenia");
-    }
-    else if (distOdra < 5.0f) {
-        glfwSetWindowTitle(window, "Eksponat: ODRA 1305 (1973) | Elwro Wroclaw | RAM: max 256 KB | Legenda polskiej informatyki");
-    }
-    else if (distRetro < 4.0f) {
-        glfwSetWindowTitle(window, "Strefa Retro: Commodore 64 (1982) & Atari 800XL (1983) | 8-bitowa rewolucja w domach");
-    }
-    else if (distCray < 3.0f) {
-        glfwSetWindowTitle(window, "Eksponat: CRAY-1 (1975) | Superkomputer wektorowy | 160 MFLOPS | Freonowe chlodzenie w siedzisku");
-    }
-    else if (distCM < 3.0f) {
-        glfwSetWindowTitle(window, "Eksponat: Connection Machine (1985) | Przetwarzanie masowo rownolegle | 65 536 mikroprocesorow");
-    }
-    else {
-        // Domyślny tytuł, gdy gracz jest na środku korytarza lub daleko od eksponatów
-        glfwSetWindowTitle(window, "Muzeum Maszyn Cyfrowych");
+    // Rzutowanie wektora wzroku (środek ekranu) na ustrój dwuwymiarowy
+    glm::vec2 camFront2D = glm::vec2(cameraFront.x, cameraFront.z);
+    if (glm::length(camFront2D) > 0.001f) {
+        camFront2D = glm::normalize(camFront2D);
     }
 
-    // Zmienne środowiskowe wysyłane do shadera: Jasność świateł
+    int nearExhibit = -1;
+    for (int i = 0; i < (int)exhibits.size(); i++) {
+        glm::vec2 dirToExhibit = exhibits[i].pos2D - playerPos2D;
+        float dist = glm::length(dirToExhibit);
+
+        if (dist < exhibits[i].radius) {
+            // Unikamy dzielenia przez zero przy drastycznie bliskich odległościach
+            if (dist < 0.1f) {
+                nearExhibit = i;
+                break;
+            }
+            else {
+                dirToExhibit /= dist;
+                // Zbadanie zbieżności kąta w oparciu o iloczyn skalarny (~53 stopnie pola widzenia)
+                if (glm::dot(camFront2D, dirToExhibit) > 0.6f) {
+                    nearExhibit = i;
+                    break;
+                }
+            }
+        }
+    }
+    activeExhibit = nearExhibit;
+    glfwSetWindowTitle(window, activeExhibit >= 0 ? exhibits[activeExhibit].name : "Muzeum Maszyn Cyfrowych");
+
+
+    // Zmienne środowiskowe wysyłane z poziomu procesora do sprzętowego potoku cieniowania
     currentBrightness += (targetBrightness - currentBrightness) * 0.02f;
 
     spLambert->use();
@@ -2085,7 +2121,7 @@ void drawScene(GLFWwindow* window) {
     };
     glUniform4fv(spLambert->u("lightPositions"), 4, glm::value_ptr(lightPos[0]));
 
-    // Rysowanie budynku
+    // Rysowanie budynku i bryły muzeum
     glm::mat4 mFloor = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)), glm::vec3(20.0f, 0.1f, 20.0f));
     drawObject(mFloor, texFloor, spLambert);
 
@@ -2127,14 +2163,14 @@ void drawScene(GLFWwindow* window) {
 
     drawBench(benchPos, 90.0f, spLambert);
 
-    // Rysowanie eksponatów
+    // Wywołania układające przygotowane modele ekspozycji
     drawUltimateEniac(glm::vec3(-5.0f, 0.0f, -6.0f), spLambert);
     drawOdra1305(glm::vec3(5.0f, 0.0f, -5.0f), spLambert);
     drawRetroRoom(glm::vec3(5.0f, 0.0f, 5.0f), 180.0f, spLambert);
     drawConnectionMachine(glm::vec3(-8.0f, 0.0f, 4.0f), 15.0f, spLambert);
     drawCray1(glm::vec3(-4.5f, 0.0f, 6.5f), -45.0f, spLambert);
 
-    // Rysowanie NPC
+    // Rysowanie zinstancjowanych struktur ludzkich i ich zadań wektorowych
     drawHuman(currentPos, currentYaw, 1.0f, isWalking, spLambert, 0);
     drawHuman(t2Pos, t2Yaw, 0.9f, t2Walking, spLambert, 1);
     drawHuman(odraPos, odraYaw, 0.0f, false, spLambert, 2);
@@ -2145,49 +2181,71 @@ void drawScene(GLFWwindow* window) {
     drawHuman(benchPos + glm::vec3(0.0f, 0.0f, -0.6f), 90.0f, 0.0f, false, spLambert, 1, true);
     drawHuman(benchPos + glm::vec3(0.0f, 0.0f, 0.6f), 110.0f, 0.0f, false, spLambert, 3, true);
 
-    // Kamery CCTV
+    // Kamery strzeżące monitoringu
     drawCamera(glm::vec3(-0.38f, 3.95f, -0.38f), 225.0f, spLambert);
     drawCamera(glm::vec3(0.38f, 3.95f, -0.38f), 135.0f, spLambert);
     drawCamera(glm::vec3(-0.38f, 3.95f, 0.38f), 315.0f, spLambert);
     drawCamera(glm::vec3(0.38f, 3.95f, 0.38f), 45.0f, spLambert);
-
-    glfwSwapBuffers(window);
 }
 
 /**
  * @brief Główna funkcja programu - punkt wejścia.
- * Konfiguruje okno, biblioteki zewnętrzne (GLEW, GLFW, Miniaudio, Vosk)
- * a następnie pętlę renderowania wizualizacji 3D.
- *
- * @return Kod błędu (EXIT_SUCCESS dla prawidłowego zakończenia lub EXIT_FAILURE przy błędach alokacji/incjalizacji).
+ * @details Konfiguruje okno menedżera wyświetlania, podłącza zewnętrzne biblioteki (GLEW, GLFW, Miniaudio, ImGui, Vosk),
+ * inicjalizuje stan shaderów, a następnie utrzymuje główną pętlę zdarzeniową aż do przerwania działania programu.
+ * * @return Kod błędu (EXIT_SUCCESS dla prawidłowego zakończenia lub EXIT_FAILURE przy napotkaniu błędów).
  */
 int main(void) {
     GLFWwindow* window;
     glfwSetErrorCallback(error_callback);
+
     if (!glfwInit()) {
         fprintf(stderr, "Nie można zainicjować GLFW.\n");
         exit(EXIT_FAILURE);
     }
+
     window = glfwCreateWindow(800, 600, "Muzeum Maszyn Cyfrowych", NULL, NULL);
     if (!window) {
         fprintf(stderr, "Nie można utworzyć okna.\n");
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
+
+    // Podpięcie callbacków obsługujących zdarzenia zewnętrzne
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Zablokowanie i ukrycie myszki w oknie gry
+
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+    glfwSwapInterval(1); // Uruchomienie v-sync
+
     if (glewInit() != GLEW_OK) {
         fprintf(stderr, "Nie można zainicjować GLEW.\n");
         exit(EXIT_FAILURE);
     }
     initOpenGLProgram(window);
 
-    // Inicjalizacja modelu Vosk (w folderze powinien istnieć folder 'model')
+    // --- INICJALIZACJA IMGUI ---
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+
+    // --- ŁADOWANIE CZCIONKI Z POLSKIMI ZNAKAMI (ImGui) ---
+    static const ImWchar ranges[] = {
+        0x0020, 0x00FF, // Kodowanie ustandaryzowane Basic Latin
+        0x0100, 0x017F, // Kodowanie Latin Extended-A (implementujące polskie znaki diakrytyczne)
+        0,
+    };
+
+    // System wczyta standardową czcionkę Arial zapewniając wysoką jakość rysowanego interfejsu opisowego
+    io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\arial.ttf", 18.0f, NULL, ranges);
+
+    // --- INICJALIZACJA VOSK I MINIAUDIO (Komendy Głosowe) ---
     g_model = vosk_model_new("model");
     g_recognizer = vosk_recognizer_new(g_model, 16000.0);
 
-    // Konfiguracja mikrofonu używając Miniaudio
     ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
     deviceConfig.capture.format = ma_format_s16;
     deviceConfig.capture.channels = 1;
@@ -2196,19 +2254,62 @@ int main(void) {
 
     ma_device device;
     if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
-        printf("Nie znaleziono mikrofonu!\n");
+        printf("Nie znaleziono mikrofonu! Przetwarzanie glosu zablokowane.\n");
     }
     ma_device_start(&device);
 
+    // --- GŁÓWNA PĘTLA RENDERUJĄCA PROGRAMU ---
     while (!glfwWindowShouldClose(window)) {
+
+        // 1. Zbieranie wejścia z urządzeń sterujących
         processInput(window);
+
+        // 2. Rozpoczęcie nowej przestrzeni konstrukcyjnej interfejsu (ImGui)
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // 3. Rysowanie środowiska 3D
         drawScene(window);
+
+        // 4. Renderowanie warstwy UI
+        if (activeExhibit >= 0) {
+            // Parametry pozycjonujące ramkę w przestrzeni viewportu okna aplikacji
+            ImGui::SetNextWindowPos(ImVec2(50, 50), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(350, 200), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Karta Eksponatu", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+            const Exhibit& ex = exhibits[activeExhibit];
+
+            // Tytuł rysowany zmiennym kolorem w palecie RGBA
+            ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "%s", ex.name);
+            ImGui::Text("Rok produkcji: %s", ex.year);
+            ImGui::Separator();
+
+            for (int i = 0; i < ex.specCount; i++) {
+                ImGui::BulletText("%s", ex.specs[i]);
+            }
+
+            ImGui::End();
+        }
+
+        // 5. Transfer danych graficznych
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    // Procedura czyszcząca i uwalniająca pamięć przed zamknięciem
+    // --- CZYSZCZENIE PAMIĘCI I BEZPIECZNE WYŁĄCZENIE SYSTEMU ---
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     freeOpenGLProgram(window);
     glfwDestroyWindow(window);
     glfwTerminate();
-    exit(EXIT_SUCCESS);
+
+    return EXIT_SUCCESS;
 }
