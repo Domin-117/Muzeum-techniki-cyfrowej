@@ -131,6 +131,9 @@ glm::vec3 cameraPos = glm::vec3(-3.0f, 1.5f, -3.0f); ///< Pozycja kamery w przes
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f); ///< Znormalizowany wektor kierunku patrzenia.
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f); ///< Wektor "w górę" określający orientację kamery.
 
+// Flaga określająca, czy program jest zapauzowany
+bool isPaused = false;
+
 float yaw = -90.0f;   ///< Kąt obrotu kamery w poziomie (oś Y).
 float pitch = 0.0f;   ///< Kąt obrotu kamery w pionie (oś X).
 float lastX = 400.0f; ///< Poprzednia pozycja kursora X na ekranie.
@@ -144,6 +147,9 @@ bool firstMouse = true; ///< Flaga zabezpieczająca przed gwałtownym skokiem ka
  * @param ypos Aktualna pozycja kursora na osi Y.
  */
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    // Jeśli gra jest zapauzowana, całkowicie ignorujemy ruch myszki
+    if (isPaused) return;
+
     if (firstMouse) {
         lastX = (float)xpos;
         lastY = (float)ypos;
@@ -368,6 +374,23 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         glfwSetWindowShouldClose(window, true);
     }
 
+    // Pauza pod klawiszem TAB
+    if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
+        isPaused = !isPaused;
+
+        if (isPaused) {
+            // Pokaż kursor i uwolnij go z okna
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+        else {
+            // Ukryj i zablokuj kursor z powrotem w oknie gry
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+            // Zabezpieczenie przed gwałtownym skokiem kamery po odpaleniu gry
+            firstMouse = true;
+        }
+    }
+
     // Obsługa interakcji z włącznikami światła
     if (key == GLFW_KEY_E && action == GLFW_PRESS) {
         bool nearSwitch = false;
@@ -397,6 +420,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
  * * @param window Wskaźnik na okno aplikacji.
  */
 void processInput(GLFWwindow* window) {
+    if (isPaused) return; // Jeśli gra jest zapauzowana, ignoruj klawisze ruchu
     float speed = 0.05f;
     glm::vec3 targetDirection = glm::vec3(0.0f);
 
@@ -1833,6 +1857,10 @@ void drawScene(GLFWwindow* window) {
     static float lastT = (float)glfwGetTime();
     float dt = time - lastT;
     lastT = time;
+
+    if (isPaused) {
+        dt = 0.0f; // Zerujemy upływ czasu - NPC się zatrzymają
+    }
 
     // --- LOGIKA AI PRZEWODNIKA ---
     static int currentWP = 0;
